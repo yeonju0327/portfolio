@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 // 💡 1. 'use client'를 유지한 상태에서,
 // 💡 2. .then((mod) => mod.default) 로 헷갈리지 않게 정확히 함수만 빼옵니다.
 const MindMapAnimation = dynamic(
-  () => import('./components/canvas/MindMapAnimation').then((mod) => mod.default),
+  () => import('./components/canvas/title/Main').then((mod) => mod.default),
   { ssr: false }
 );
 
