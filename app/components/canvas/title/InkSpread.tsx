@@ -5,9 +5,9 @@ import useImage from 'use-image';
 import Konva from 'konva';
 import { NodeProps } from './types';
 
-const InkSpread = React.memo(({ 
+const InkSpread: React.FC<NodeProps & { onNodeClick?: (id: string) => void }> = React.memo(({ 
   id, x, y, color = '#000000', size = 85, img = '/images/node-image.jpg', delay = 0, onNodeClick
-}: NodeProps & { onNodeClick?: (id: string) => void }) => {
+}) => {
   
   const mainGroupRef = useRef<import('konva/lib/Group').Group>(null);
   const inkSpreadRef = useRef<import('konva/lib/shapes/Ring').Ring>(null);
@@ -15,7 +15,7 @@ const InkSpread = React.memo(({
   
   const [filterScaleTween, setFilterScaleTween] = useState<gsap.core.Tween | null>(null);
   const hoverProxy = useRef({ inner: 0, filterScale: 20 });
-  const [isReady, setIsReady] = useState(false);
+  const isReadyRef = useRef(false);
   const [image] = useImage(img);
 
   const HOVER_INNER_RADIUS = size - 15; 
@@ -27,9 +27,9 @@ const InkSpread = React.memo(({
 
   const initialSolidStop = 0.75; 
   const initialFadeWidth = 1 - initialSolidStop; 
-  
   const initialMidStart = initialSolidStop + initialFadeWidth * 0.3; 
-  const initialMidEnd = initialSolidStop + initialFadeWidth * 0.7;   
+  const initialMidEnd = initialSolidStop + initialFadeWidth * 0.6;   
+  const initialFadeTail = initialSolidStop + initialFadeWidth * 0.9; 
 
   useEffect(() => {
     const tl = gsap.timeline({ delay });
@@ -38,17 +38,22 @@ const InkSpread = React.memo(({
     tl.set(inkSpreadRef.current, { innerRadius: 0, outerRadius: size });
     tl.set(imageRef.current, { opacity: 0 });
 
+    // ✨ 핵심 수정: 애니메이션이 완전히 끝난 후(onComplete) 호버를 활성화합니다.
     tl.to(mainGroupRef.current, { 
       opacity: 1, scaleX: 1, scaleY: 1, duration: 2.5, ease: "power2.out", 
-      delay: 0.8, 
-      onComplete: () => setIsReady(true)
+      delay: 0.8,
+      onComplete: () => {
+        isReadyRef.current = true;
+      }
     });
-    
-    return () => { tl.kill(); };
+
+    return () => { 
+      tl.kill(); 
+    };
   }, [size, delay]);
 
   const handleMouseEnter = () => {
-    if (!isReady) return;
+    if (!isReadyRef.current) return;
     document.body.style.cursor = 'pointer'; 
 
     gsap.killTweensOf([mainGroupRef.current, imageRef.current]);
@@ -73,16 +78,17 @@ const InkSpread = React.memo(({
           
           const solidStop = 0.75 + (0.24 * smoothProgress); 
           const fadeWidth = 1 - solidStop;
-
           const midStart = solidStop + fadeWidth * 0.3;
-          const midEnd = solidStop + fadeWidth * 0.7;
+          const midEnd = solidStop + fadeWidth * 0.6;
+          const fadeTail = solidStop + fadeWidth * 0.9;
 
           inkSpreadRef.current?.fillRadialGradientColorStops([
             0, color, 
             solidStop, color, 
-            midStart, `rgba(${r},${g},${b},0.7)`, 
-            midEnd, `rgba(${r},${g},${b},0.25)`,  
-            1, 'transparent'
+            midStart, `rgba(${r},${g},${b},0.6)`, 
+            midEnd, `rgba(${r},${g},${b},0.2)`,  
+            fadeTail, `rgba(${r},${g},${b},0.02)`,
+            1, `rgba(${r},${g},${b},0)`
           ]);
         }
       });
@@ -91,7 +97,7 @@ const InkSpread = React.memo(({
   };
 
   const handleMouseLeave = () => {
-    if (!isReady) return;
+    if (!isReadyRef.current) return;
     document.body.style.cursor = 'default';
 
     gsap.killTweensOf([mainGroupRef.current, imageRef.current]);
@@ -117,16 +123,17 @@ const InkSpread = React.memo(({
 
           const solidStop = 0.75 + (0.24 * smoothProgress); 
           const fadeWidth = 1 - solidStop;
-
           const midStart = solidStop + fadeWidth * 0.3;
-          const midEnd = solidStop + fadeWidth * 0.7;
+          const midEnd = solidStop + fadeWidth * 0.6;
+          const fadeTail = solidStop + fadeWidth * 0.9;
 
           inkSpreadRef.current?.fillRadialGradientColorStops([
             0, color, 
             solidStop, color, 
-            midStart, `rgba(${r},${g},${b},0.7)`,
-            midEnd, `rgba(${r},${g},${b},0.25)`,
-            1, 'transparent'
+            midStart, `rgba(${r},${g},${b},0.6)`,
+            midEnd, `rgba(${r},${g},${b},0.2)`,
+            fadeTail, `rgba(${r},${g},${b},0.02)`,
+            1, `rgba(${r},${g},${b},0)` 
           ]);
         }
       });
@@ -153,9 +160,10 @@ const InkSpread = React.memo(({
           fillRadialGradientColorStops={[
             0, color, 
             initialSolidStop, color, 
-            initialMidStart, `rgba(${r},${g},${b},0.7)`, 
-            initialMidEnd, `rgba(${r},${g},${b},0.25)`, 
-            1, 'transparent'
+            initialMidStart, `rgba(${r},${g},${b},0.6)`, 
+            initialMidEnd, `rgba(${r},${g},${b},0.2)`, 
+            initialFadeTail, `rgba(${r},${g},${b},0.02)`,
+            1, `rgba(${r},${g},${b},0)` 
           ]}
           listening={false} 
         />
@@ -168,8 +176,8 @@ const InkSpread = React.memo(({
         fill="rgba(0,0,0,0)" 
         onMouseEnter={handleMouseEnter} 
         onMouseLeave={handleMouseLeave} 
-        onClick={() => isReady && onNodeClick?.(id)}
-        onTap={() => isReady && onNodeClick?.(id)} 
+        onClick={() => isReadyRef.current && onNodeClick?.(id)}
+        onTap={() => isReadyRef.current && onNodeClick?.(id)} 
       />
     </Group>
   );
