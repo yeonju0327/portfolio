@@ -2,10 +2,10 @@ export interface NodeProps {
   id: string;
   x: number;
   y: number;
-  color?: string; 
-  size?: number;  
-  img?: string;   
-  delay?: number; 
+  color?: string;
+  size?: number;
+  img?: string;
+  delay?: number;
 }
 
 export interface BranchProps {
