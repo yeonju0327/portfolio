@@ -1,0 +1,179 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { Group, Circle, Ring, Image as KonvaImage } from 'react-konva';
+import { gsap } from 'gsap';
+import useImage from 'use-image';
+import Konva from 'konva';
+import { NodeProps } from './types';
+
+const InkSpread = React.memo(({ 
+  id, x, y, color = '#000000', size = 85, img = '/images/node-image.jpg', delay = 0, onNodeClick
+}: NodeProps & { onNodeClick?: (id: string) => void }) => {
+  
+  const mainGroupRef = useRef<import('konva/lib/Group').Group>(null);
+  const inkSpreadRef = useRef<import('konva/lib/shapes/Ring').Ring>(null);
+  const imageRef = useRef<import('konva/lib/shapes/Image').Image>(null);
+  
+  const [filterScaleTween, setFilterScaleTween] = useState<gsap.core.Tween | null>(null);
+  const hoverProxy = useRef({ inner: 0, filterScale: 20 });
+  const [isReady, setIsReady] = useState(false);
+  const [image] = useImage(img);
+
+  const HOVER_INNER_RADIUS = size - 15; 
+  const CLIP_RADIUS = size - 5;         
+  const IMG_SIZE = CLIP_RADIUS * 2;     
+
+  const rgb = Konva.Util.getRGB(color) || { r: 0, g: 0, b: 0 };
+  const { r, g, b } = rgb;
+
+  const initialSolidStop = 0.75; 
+  const initialFadeWidth = 1 - initialSolidStop; 
+  
+  const initialMidStart = initialSolidStop + initialFadeWidth * 0.3; 
+  const initialMidEnd = initialSolidStop + initialFadeWidth * 0.7;   
+
+  useEffect(() => {
+    const tl = gsap.timeline({ delay });
+    
+    tl.set(mainGroupRef.current, { scaleX: 0, scaleY: 0, opacity: 0 });
+    tl.set(inkSpreadRef.current, { innerRadius: 0, outerRadius: size });
+    tl.set(imageRef.current, { opacity: 0 });
+
+    tl.to(mainGroupRef.current, { 
+      opacity: 1, scaleX: 1, scaleY: 1, duration: 2.5, ease: "power2.out", 
+      delay: 0.8, 
+      onComplete: () => setIsReady(true)
+    });
+    
+    return () => { tl.kill(); };
+  }, [size, delay]);
+
+  const handleMouseEnter = () => {
+    if (!isReady) return;
+    document.body.style.cursor = 'pointer'; 
+
+    gsap.killTweensOf([mainGroupRef.current, imageRef.current]);
+
+    gsap.to(mainGroupRef.current, { scaleX: 1.15, scaleY: 1.15, duration: 0.25, ease: "power2.out" });
+    gsap.to(imageRef.current, { opacity: 1, duration: 0.25, ease: "power2.out" });
+    
+    const filterMap = document.getElementById(`disp-${id}`);
+
+    if (filterMap) {
+      const tween = gsap.to(hoverProxy.current, {
+        inner: HOVER_INNER_RADIUS, 
+        filterScale: 0,      
+        duration: 0.25,      
+        ease: "power2.out",
+        onUpdate: () => {
+          inkSpreadRef.current?.innerRadius(hoverProxy.current.inner);
+          filterMap.setAttribute('scale', hoverProxy.current.filterScale.toString());
+          
+          const progress = hoverProxy.current.inner / HOVER_INNER_RADIUS; 
+          const smoothProgress = gsap.parseEase("power1.out")(progress);
+          
+          const solidStop = 0.75 + (0.24 * smoothProgress); 
+          const fadeWidth = 1 - solidStop;
+
+          const midStart = solidStop + fadeWidth * 0.3;
+          const midEnd = solidStop + fadeWidth * 0.7;
+
+          inkSpreadRef.current?.fillRadialGradientColorStops([
+            0, color, 
+            solidStop, color, 
+            midStart, `rgba(${r},${g},${b},0.7)`, 
+            midEnd, `rgba(${r},${g},${b},0.25)`,  
+            1, 'transparent'
+          ]);
+        }
+      });
+      setFilterScaleTween(tween);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!isReady) return;
+    document.body.style.cursor = 'default';
+
+    gsap.killTweensOf([mainGroupRef.current, imageRef.current]);
+    if (filterScaleTween) filterScaleTween.kill();
+
+    gsap.to(mainGroupRef.current, { scaleX: 1, scaleY: 1, duration: 0.35, ease: "power3.out" });
+    gsap.to(imageRef.current, { opacity: 0, duration: 0.35, ease: "power3.out" });
+    
+    const filterMap = document.getElementById(`disp-${id}`);
+
+    if (filterMap) {
+      gsap.to(hoverProxy.current, {
+        inner: 0, 
+        filterScale: 20, 
+        duration: 0.35,
+        ease: "power3.out",
+        onUpdate: () => {
+          inkSpreadRef.current?.innerRadius(hoverProxy.current.inner);
+          filterMap.setAttribute('scale', hoverProxy.current.filterScale.toString());
+          
+          const progress = hoverProxy.current.inner / HOVER_INNER_RADIUS; 
+          const smoothProgress = gsap.parseEase("power1.out")(progress);
+
+          const solidStop = 0.75 + (0.24 * smoothProgress); 
+          const fadeWidth = 1 - solidStop;
+
+          const midStart = solidStop + fadeWidth * 0.3;
+          const midEnd = solidStop + fadeWidth * 0.7;
+
+          inkSpreadRef.current?.fillRadialGradientColorStops([
+            0, color, 
+            solidStop, color, 
+            midStart, `rgba(${r},${g},${b},0.7)`,
+            midEnd, `rgba(${r},${g},${b},0.25)`,
+            1, 'transparent'
+          ]);
+        }
+      });
+    }
+    setFilterScaleTween(null);
+  };
+
+  return (
+    <Group x={x} y={y}>
+      <Group ref={mainGroupRef} scaleX={0} scaleY={0} opacity={0} listening={false}>
+        
+        <Group clipFunc={(ctx) => ctx.arc(0, 0, CLIP_RADIUS, 0, Math.PI * 2)} listening={false}>
+          <KonvaImage 
+            ref={imageRef} image={image} x={0} y={0} 
+            width={IMG_SIZE} height={IMG_SIZE} offsetX={CLIP_RADIUS} offsetY={CLIP_RADIUS} 
+            opacity={0} listening={false} 
+          />
+        </Group>
+
+        <Ring 
+          ref={inkSpreadRef} x={0} y={0} innerRadius={0} outerRadius={size} 
+          fillRadialGradientStartPoint={{ x: 0, y: 0 }} fillRadialGradientStartRadius={0}
+          fillRadialGradientEndPoint={{ x: 0, y: 0 }} fillRadialGradientEndRadius={size}
+          fillRadialGradientColorStops={[
+            0, color, 
+            initialSolidStop, color, 
+            initialMidStart, `rgba(${r},${g},${b},0.7)`, 
+            initialMidEnd, `rgba(${r},${g},${b},0.25)`, 
+            1, 'transparent'
+          ]}
+          listening={false} 
+        />
+      </Group>
+
+      <Circle 
+        x={0} 
+        y={0} 
+        radius={size + 35} 
+        fill="rgba(0,0,0,0)" 
+        onMouseEnter={handleMouseEnter} 
+        onMouseLeave={handleMouseLeave} 
+        onClick={() => isReady && onNodeClick?.(id)}
+        onTap={() => isReady && onNodeClick?.(id)} 
+      />
+    </Group>
+  );
+});
+InkSpread.displayName = 'InkSpread';
+
+export default InkSpread;
