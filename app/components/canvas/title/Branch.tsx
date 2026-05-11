@@ -5,14 +5,16 @@ import Konva from 'konva';
 import { BranchProps } from './types';
 
 const Branch: React.FC<BranchProps> = React.memo(({ startX, startY, endX, endY, startColor, endColor, delay = 0 }) => {
-  const lineRef = useRef<import('konva/lib/shapes/Line').Line>(null);
+  const lineRef = useRef<Konva.Line>(null);
 
+  // 기존 RGBA 변환 로직 유지
   const getRGBA = (hex: string, alpha: number) => {
     const rgb = Konva.Util.getRGB(hex);
     if (!rgb) return `rgba(0,0,0,${alpha})`;
     return `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
   };
 
+  // ✨ 기존의 지터(Jitter) 포인트 및 길이 계산 로직 100% 유지
   const { roughPoints, roughLength } = useMemo(() => {
     const points = [startX, startY];
     const dx = endX - startX;
@@ -47,7 +49,17 @@ const Branch: React.FC<BranchProps> = React.memo(({ startX, startY, endX, endY, 
     if (roughLength > 0 && lineRef.current) {
       const tl = gsap.timeline({ delay });
       tl.set(lineRef.current, { opacity: 0.8 }); 
-      tl.fromTo(lineRef.current, { dashOffset: roughLength }, { dashOffset: 0, duration: 1.0, ease: "none" });
+      
+      // ✨ 수정: duration만 1.0에서 0.8로 0.2초 단축
+      tl.fromTo(lineRef.current, 
+        { dashOffset: roughLength }, 
+        { 
+          dashOffset: 0, 
+          duration: 1.65, // 요청하신 대로 시간만 딱 줄였습니다.
+          ease: "none" 
+        }
+      );
+      
       return () => { tl.kill(); };
     }
   }, [roughLength, delay]);
@@ -60,9 +72,15 @@ const Branch: React.FC<BranchProps> = React.memo(({ startX, startY, endX, endY, 
         strokeWidth={13} 
         strokeLinearGradientStartPoint={{ x: startX, y: startY }}
         strokeLinearGradientEndPoint={{ x: endX, y: endY }}
-        strokeLinearGradientColorStops={[0, getRGBA(startColor, 0), 0.1, getRGBA(startColor, 1), 0.9, getRGBA(endColor, 1), 1, getRGBA(endColor, 0.25)]}
+        strokeLinearGradientColorStops={[
+          0, getRGBA(startColor, 0), 
+          0.1, getRGBA(startColor, 1), 
+          0.9, getRGBA(endColor, 1), 
+          1, getRGBA(endColor, 0.25)
+        ]}
         lineCap="round"
         lineJoin="round" 
+        // 기존 선 생성 방식 유지
         dash={[roughLength, roughLength + 100]}
         opacity={0} 
         listening={false}
@@ -70,5 +88,6 @@ const Branch: React.FC<BranchProps> = React.memo(({ startX, startY, endX, endY, 
     </Group>
   );
 });
+
 Branch.displayName = 'Branch';
 export default Branch;

@@ -41,19 +41,14 @@ const Main = () => {
 
   const handleExpandNode = useCallback((parentId: string | null, childId: string) => {
     if (activeIds.includes(childId) || fadingIds.includes(childId)) return;
-    
     setActiveIds(prev => [...prev, childId]);
-    
     if (parentId) {
       setLinks(prev => [...prev, { source: parentId, target: childId, delay: 0 }]); 
     }
-
     setFadingIds(prev => [...prev, childId]);
-    
     setTimeout(() => {
       setFadingIds(prev => prev.filter(id => id !== childId));
     }, 3500);
-    
   }, [activeIds, fadingIds]);
 
   const handleNodeClick = useCallback((nodeId: string) => {
@@ -82,8 +77,11 @@ const Main = () => {
       }}>
         <div style={{ position: 'absolute', width: '100%', height: '100%', backgroundImage: 'url(/background-image.jpg)', backgroundRepeat: 'repeat' }} />
 
-        {/* 1. 간선 레이어 */}
-        <div style={{ position: 'absolute', width: '100%', height: '100%', pointerEvents: 'none', filter: 'url(#crayon-texture)', zIndex: 1 }}>
+        {/* --- LAYER 1: 간선 (가장 아래) --- */}
+        <div style={{ 
+          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
+          pointerEvents: 'none', filter: 'url(#crayon-texture)', zIndex: 10 
+        }}>
           <Stage width={VIRTUAL_SIZE} height={VIRTUAL_SIZE}>
             <Layer>
               {links.map((link, idx) => {
@@ -102,17 +100,24 @@ const Main = () => {
           </Stage>
         </div>
 
-        {/* 2. 플레이스홀더 레이어 */}
-        <div style={{ pointerEvents: isDraggingActive ? 'none' : 'auto', zIndex: 5 }}>
+        {/* --- LAYER 2: 플레이스홀더 (간선 위, 노드 아래) --- */}
+        {/* 수정됨: 전체 컨테이너는 클릭을 통과시킴 (none) */}
+        <div style={{ 
+          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
+          pointerEvents: 'none', zIndex: 20 
+        }}>
           {(!activeIds.includes('root') || fadingIds.includes('root')) && (
-            <div style={{ position: 'absolute', left: PORTFOLIO_MAP.root.x - 55, top: PORTFOLIO_MAP.root.y - 55, width: 110, height: 110, filter: 'url(#crayon-texture)' }}>
+            // 수정됨: 개별 요소 래퍼에서만 클릭 이벤트를 활성화 (auto)
+            <div style={{ 
+              position: 'absolute', left: PORTFOLIO_MAP.root.x - 55, top: PORTFOLIO_MAP.root.y - 55, 
+              width: 110, height: 110, filter: 'url(#crayon-texture)',
+              pointerEvents: isDraggingActive ? 'none' : 'auto'
+            }}>
               <Stage width={110} height={110}>
                 <Layer listening={!isDraggingActive && !fadingIds.includes('root')}>
                   <NodePlaceholder
-                    x={55} y={55} 
-                    color={PORTFOLIO_MAP.root.color || '#333333'} // ✨ 수정: 기본값 추가
-                    iconType={PORTFOLIO_MAP.root.icon}
-                    targetDelay={0} 
+                    x={55} y={55} color={PORTFOLIO_MAP.root.color || '#333333'} 
+                    iconType={PORTFOLIO_MAP.root.icon} targetDelay={0} 
                     onClick={() => handleExpandNode(null, 'root')}
                     isFading={fadingIds.includes('root')} isDraggingActive={isDraggingActive}
                   />
@@ -127,14 +132,17 @@ const Main = () => {
               const targetData = PORTFOLIO_MAP[childId];
               if (!targetData) return null;
               return (
-                <div key={`placeholder-${childId}`} style={{ position: 'absolute', left: targetData.x - 55, top: targetData.y - 55, width: 110, height: 110, filter: 'url(#crayon-texture)' }}>
+                // 수정됨: 개별 요소 래퍼에서만 클릭 이벤트를 활성화 (auto)
+                <div key={`placeholder-${childId}`} style={{ 
+                  position: 'absolute', left: targetData.x - 55, top: targetData.y - 55, 
+                  width: 110, height: 110, filter: 'url(#crayon-texture)',
+                  pointerEvents: isDraggingActive ? 'none' : 'auto'
+                }}>
                   <Stage width={110} height={110}>
                     <Layer listening={!isDraggingActive && !fadingIds.includes(childId)}>
                       <NodePlaceholder
-                        x={55} y={55} 
-                        color={targetData.color || '#333333'} // ✨ 수정: 기본값 추가
-                        iconType={targetData.icon}
-                        targetDelay={targetData.delay ?? 0.2} // ✨ 수정: 기본값 추가
+                        x={55} y={55} color={targetData.color || '#333333'} 
+                        iconType={targetData.icon} targetDelay={1.8} 
                         onClick={() => handleExpandNode(parentNode.id, childId)}
                         isFading={fadingIds.includes(childId)} isDraggingActive={isDraggingActive}
                       />
@@ -146,21 +154,27 @@ const Main = () => {
           )}
         </div>
 
-        {/* 3. 노드 레이어 */}
-        <div style={{ pointerEvents: isDraggingActive ? 'none' : 'auto', zIndex: 10 }}>
+        {/* --- LAYER 3: 노드 (InkSpread - 가장 위) --- */}
+        {/* 수정됨: 전체 컨테이너는 클릭을 통과시킴 (none) */}
+        <div style={{ 
+          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
+          pointerEvents: 'none', zIndex: 30 
+        }}>
           {activeNodes.map(node => {
-            const size = node.size ?? 85; // ✨ 수정: 안전하게 값 추출
+            const size = node.size ?? 85;
             const STAGE_SIZE = (size + 50) * 2;
             return (
-              <div key={`spread-${node.id}`} style={{ position: 'absolute', left: node.x - STAGE_SIZE/2, top: node.y - STAGE_SIZE/2, width: STAGE_SIZE, height: STAGE_SIZE, filter: `url(#ink-bleed-${node.id})` }}>
+              // 수정됨: 개별 요소 래퍼에서만 클릭 이벤트를 활성화 (auto)
+              <div key={`spread-${node.id}`} style={{ 
+                position: 'absolute', left: node.x - STAGE_SIZE/2, top: node.y - STAGE_SIZE/2, 
+                width: STAGE_SIZE, height: STAGE_SIZE, filter: `url(#ink-bleed-${node.id})`,
+                pointerEvents: isDraggingActive ? 'none' : 'auto'
+              }}>
                 <Stage width={STAGE_SIZE} height={STAGE_SIZE}>
                   <Layer>
                     <InkSpread 
-                      {...node} 
-                      size={size} // ✨ 수정: 명시적으로 전달
-                      x={STAGE_SIZE/2} y={STAGE_SIZE/2} 
-                      onNodeClick={handleNodeClick} 
-                      isDraggingActive={isDraggingActive} 
+                      {...node} size={size} x={STAGE_SIZE/2} y={STAGE_SIZE/2} 
+                      onNodeClick={handleNodeClick} isDraggingActive={isDraggingActive} 
                     />
                   </Layer>
                 </Stage>
@@ -169,8 +183,11 @@ const Main = () => {
           })}
         </div>
 
-        {/* 4. 드롭 레이어 */}
-        <div style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', zIndex: 20 }}>
+        {/* --- LAYER 4: 드롭 (잉크 방울 - 시각적 특수효과로 최상단 유지) --- */}
+        <div style={{ 
+          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
+          pointerEvents: 'none', zIndex: 40 
+        }}>
           <Stage width={VIRTUAL_SIZE} height={VIRTUAL_SIZE}>
             <Layer>
               {activeNodes.map(node => ( <InkDrop key={`drop-${node.id}`} {...node} /> ))}
