@@ -14,7 +14,7 @@ import { useInfiniteCanvas } from '../../../hooks/useInfiniteCanvas';
 const VIRTUAL_SIZE = 4000;
 const CENTER = VIRTUAL_SIZE / 2;
 
-type MapData = Record<string, NodeProps & { children: string[], icon: string }>;
+type MapData = Record<string, NodeProps & { children: string[], icon: string, caption?: string }>;
 
 const PORTFOLIO_MAP: MapData = {
   'root': { id: 'root', x: CENTER, y: CENTER, size: 85, color: '#333333', img: '/images/node-image.jpg', delay: 0, children: ['about', 'projects'], icon: 'plus', caption: '탐색 시작하기' },
@@ -101,13 +101,11 @@ const Main = () => {
         </div>
 
         {/* --- LAYER 2: 플레이스홀더 (간선 위, 노드 아래) --- */}
-        {/* 수정됨: 전체 컨테이너는 클릭을 통과시킴 (none) */}
         <div style={{ 
           position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
           pointerEvents: 'none', zIndex: 20 
         }}>
           {(!activeIds.includes('root') || fadingIds.includes('root')) && (
-            // 수정됨: 개별 요소 래퍼에서만 클릭 이벤트를 활성화 (auto)
             <div style={{ 
               position: 'absolute', left: PORTFOLIO_MAP.root.x - 55, top: PORTFOLIO_MAP.root.y - 55, 
               width: 110, height: 110, filter: 'url(#crayon-texture)',
@@ -132,7 +130,6 @@ const Main = () => {
               const targetData = PORTFOLIO_MAP[childId];
               if (!targetData) return null;
               return (
-                // 수정됨: 개별 요소 래퍼에서만 클릭 이벤트를 활성화 (auto)
                 <div key={`placeholder-${childId}`} style={{ 
                   position: 'absolute', left: targetData.x - 55, top: targetData.y - 55, 
                   width: 110, height: 110, filter: 'url(#crayon-texture)',
@@ -155,29 +152,26 @@ const Main = () => {
         </div>
 
         {/* --- LAYER 3: 노드 (InkSpread - 가장 위) --- */}
-        {/* 수정됨: 전체 컨테이너는 클릭을 통과시킴 (none) */}
         <div style={{ 
           position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
           pointerEvents: 'none', zIndex: 30 
         }}>
           {activeNodes.map(node => {
             const size = node.size ?? 85;
-            const STAGE_SIZE = (size + 50) * 2;
+            
+            // ✨ 캔버스 영역(STAGE_SIZE)을 대폭 확대하여 내부의 원형 감지 영역(Circle)이 네모나게 잘리는 현상 방지
+            const STAGE_SIZE = size * 5; 
+
             return (
-              // 수정됨: 개별 요소 래퍼에서만 클릭 이벤트를 활성화 (auto)
               <div key={`spread-${node.id}`} style={{ 
                 position: 'absolute', left: node.x - STAGE_SIZE/2, top: node.y - STAGE_SIZE/2, 
-                width: STAGE_SIZE, height: STAGE_SIZE, filter: `url(#ink-bleed-${node.id})`,
+                width: STAGE_SIZE, height: STAGE_SIZE,
                 pointerEvents: isDraggingActive ? 'none' : 'auto'
               }}>
-                <Stage width={STAGE_SIZE} height={STAGE_SIZE}>
-                  <Layer>
-                    <InkSpread 
-                      {...node} size={size} x={STAGE_SIZE/2} y={STAGE_SIZE/2} 
-                      onNodeClick={handleNodeClick} isDraggingActive={isDraggingActive} 
-                    />
-                  </Layer>
-                </Stage>
+                <InkSpread 
+                  {...node} size={size} stageSize={STAGE_SIZE} x={STAGE_SIZE/2} y={STAGE_SIZE/2} 
+                  onNodeClick={handleNodeClick} isDraggingActive={isDraggingActive} 
+                />
               </div>
             );
           })}
