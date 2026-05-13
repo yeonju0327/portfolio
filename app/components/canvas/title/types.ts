@@ -6,6 +6,7 @@ export interface NodeProps {
   size?: number;
   img?: string;
   delay?: number;
+  caption?: string; // 추가된 캡션 속성
 }
 
 export interface BranchProps {

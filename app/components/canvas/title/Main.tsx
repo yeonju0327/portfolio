@@ -17,12 +17,12 @@ const CENTER = VIRTUAL_SIZE / 2;
 type MapData = Record<string, NodeProps & { children: string[], icon: string }>;
 
 const PORTFOLIO_MAP: MapData = {
-  'root': { id: 'root', x: CENTER, y: CENTER, size: 85, color: '#333333', img: '/images/node-image.jpg', delay: 0, children: ['about', 'projects'], icon: 'plus' },
-  'about': { id: 'about', x: CENTER - 280, y: CENTER - 120, size: 75, color: '#8AB0D0', img: '/images/node-image3.jpg', delay: 0.2, children: ['skills'], icon: 'about' },
-  'projects': { id: 'projects', x: CENTER + 300, y: CENTER - 150, size: 65, color: '#FF8D7D', img: '/images/node-image2.jpg', delay: 0.2, children: ['project-a', 'project-b'], icon: 'project' },
-  'skills': { id: 'skills', x: CENTER - 450, y: CENTER + 80, size: 60, color: '#9CC09C', img: '/images/node-image4.jpg', delay: 0.2, children: [], icon: 'skill' },
-  'project-a': { id: 'project-a', x: CENTER + 500, y: CENTER + 50, size: 70, color: '#AFA1D6', img: '/images/node-image5.jpg', delay: 0.2, children: [], icon: 'project' },
-  'project-b': { id: 'project-b', x: CENTER + 180, y: CENTER + 250, size: 60, color: '#FFB3A7', img: '/images/node-image2.jpg', delay: 0.2, children: [], icon: 'project' },
+  'root': { id: 'root', x: CENTER, y: CENTER, size: 85, color: '#333333', img: '/images/node-image.jpg', delay: 0, children: ['about', 'projects'], icon: 'plus', caption: '탐색 시작하기' },
+  'about': { id: 'about', x: CENTER - 280, y: CENTER - 120, size: 75, color: '#8AB0D0', img: '/images/node-image3.jpg', delay: 0.2, children: ['skills'], icon: 'about', caption: 'About Me' },
+  'projects': { id: 'projects', x: CENTER + 300, y: CENTER - 150, size: 65, color: '#FF8D7D', img: '/images/node-image2.jpg', delay: 0.2, children: ['project-a', 'project-b'], icon: 'project', caption: 'My Projects' },
+  'skills': { id: 'skills', x: CENTER - 450, y: CENTER + 80, size: 60, color: '#9CC09C', img: '/images/node-image4.jpg', delay: 0.2, children: [], icon: 'skill', caption: 'Tech Stack' },
+  'project-a': { id: 'project-a', x: CENTER + 500, y: CENTER + 50, size: 70, color: '#AFA1D6', img: '/images/node-image5.jpg', delay: 0.2, children: [], icon: 'project', caption: 'Interactive Canvas' },
+  'project-b': { id: 'project-b', x: CENTER + 180, y: CENTER + 250, size: 60, color: '#FFB3A7', img: '/images/node-image2.jpg', delay: 0.2, children: [], icon: 'project', caption: '3D WebGL Portfolio' },
 };
 
 const Main = () => {
