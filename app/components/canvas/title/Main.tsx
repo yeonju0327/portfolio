@@ -93,6 +93,7 @@ const Main = () => {
     if (activeIds.includes(childId) || fadingIds.includes(childId)) return;
     setActiveIds(prev => [...prev, childId]);
     if (parentId) setLinks(prev => [...prev, { source: parentId, target: childId, delay: 0 }]); 
+    
     setFadingIds(prev => [...prev, childId]);
     setTimeout(() => { setFadingIds(prev => prev.filter(id => id !== childId)); }, 3500);
   }, [activeIds, fadingIds]);
@@ -199,16 +200,13 @@ const Main = () => {
         </div>
       </div>
 
-      {/* ✨ 대시보드 오버레이 섹션 */}
       {selectedNode && (
         <>
-          {/* 1. 바깥쪽 클릭 감지 레이어 (Backdrop) */}
           <div 
             style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1999, backgroundColor: 'rgba(0,0,0,0.05)' }} 
             onClick={handleCloseDashboard} 
           />
 
-          {/* 2. 대시보드 팝업 */}
           <div 
             className={`dashboard ${dashboardPos}`}
             style={{
@@ -229,7 +227,8 @@ const Main = () => {
           >
             <button onClick={handleCloseDashboard} style={{ position: 'absolute', top: '24px', right: '32px', background: 'none', border: 'none', fontSize: '28px', cursor: 'pointer', color: '#333' }}>✕</button>
             
-            <div style={{ flex: 1, opacity: 0, animation: 'fadeInContent 0.5s 0.4s forwards', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+            {/* ✨ 스크롤바 방지: overflowX: 'hidden'을 추가하여 가로 스크롤을 원천 차단했습니다. */}
+            <div style={{ flex: 1, opacity: 0, animation: 'fadeInContent 0.5s 0.4s forwards', display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden' }}>
               <h2 style={{ color: selectedNode.color, borderBottom: `4px solid ${selectedNode.color}`, paddingBottom: '15px', fontSize: '2.5rem', margin: 0 }}>
                 {selectedNode.caption}
               </h2>
@@ -237,22 +236,22 @@ const Main = () => {
                 {selectedNode.description}
               </p>
               
-              {/* ✨ 버튼 크기 및 위치 조정 */}
               <button 
                 className="view-more-btn"
                 style={{
                   marginTop: 'auto', 
-                  padding: '12px 24px', // 패딩 축소
+                  marginBottom: '10px', // ✨ 물리적 공간 추가: 버튼이 커질 때 영역 밖으로 밀려 스크롤바가 생기는 것을 방지
+                  padding: '12px 24px',
                   backgroundColor: selectedNode.color,
                   color: '#fff', 
                   border: 'none', 
-                  borderRadius: '30px', // 더 둥글게
+                  borderRadius: '30px',
                   cursor: 'pointer',
-                  fontSize: '0.95rem', // 폰트 크기 축소
+                  fontSize: '0.95rem',
                   fontWeight: 'bold', 
                   transition: 'transform 0.2s', 
-                  width: 'fit-content', // 텍스트 길이에 맞춤
-                  alignSelf: dashboardPos === 'top' ? 'center' : 'flex-start', // 상단 모드에선 중앙, 아니면 왼쪽 정렬
+                  width: 'fit-content',
+                  alignSelf: 'center', 
                   boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
                 }}
                 onClick={() => alert(`${selectedNode.id} 상세 페이지로 전체 확장 이동!`)}
@@ -279,8 +278,8 @@ const Main = () => {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .view-more-btn:hover { transform: translateY(-2px) scale(1.03); }
-        .view-more-btn:active { transform: translateY(0) scale(0.98); }
+        .view-more-btn:hover { transform: scale(1.05); }
+        .view-more-btn:active { transform: scale(0.98); }
       `}</style>
     </>
   );

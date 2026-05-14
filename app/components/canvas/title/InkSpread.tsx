@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback, useMemo } from "react";
-import { Stage, Layer, Group, Ring, Image as KonvaImage, Text, Path } from "react-konva";
+import { Stage, Layer, Group, Circle, Ring, Image as KonvaImage, Text, Path } from "react-konva";
 import { gsap } from "gsap";
 import useImage from "use-image";
 import Konva from "konva";
@@ -144,6 +144,7 @@ const InkSpread: React.FC<ExtendedProps> = React.memo(
 
     useEffect(() => {
       isNodeClickedRef.current = isSelected ?? false;
+      
       if (isSelected) {
         updateHoverState('full');
         gsap.ticker.add(updateGradient); 
@@ -151,6 +152,7 @@ const InkSpread: React.FC<ExtendedProps> = React.memo(
         updateHoverState(isMouseOverRef.current ? 'full' : 'none');
         gsap.ticker.remove(updateGradient);
       }
+      
       return () => { gsap.ticker.remove(updateGradient); };
     }, [isSelected, updateHoverState, updateGradient]);
 
@@ -162,79 +164,86 @@ const InkSpread: React.FC<ExtendedProps> = React.memo(
     }, [isDraggingActive, updateHoverState]);
 
     useEffect(() => {
+      // ✨ 핵심 1: 타임라인 딜레이(delay: 0.2)와 상관없이 초기 투명도를 0초 만에 완벽하게 강제 셋팅합니다.
+      // 이렇게 하면 렌더링되자마자 아이콘이 번쩍이는 플래시 현상을 원천 차단할 수 있습니다.
+      gsap.set(mainGroupRef.current, { scaleX: 0, scaleY: 0, opacity: 0 });
+      gsap.set(inkSpreadRef.current, { innerRadius: 0, outerRadius: size });
+      gsap.set(imageRef.current, { opacity: 0 });
+      gsap.set(iconRef.current, { opacity: 0, scaleX: 1.8, scaleY: 1.8 }); 
+      if (captionRef.current) gsap.set(captionRef.current, { opacity: 0, y: size + 10 });
+
       const tl = gsap.timeline({ delay });
-      tl.set(mainGroupRef.current, { scaleX: 0, scaleY: 0, opacity: 0 });
-      tl.set(inkSpreadRef.current, { innerRadius: 0, outerRadius: size });
-      tl.set(imageRef.current, { opacity: 0 });
-      tl.set(iconRef.current, { opacity: 0, scaleX: 1.8, scaleY: 1.8 }); 
-      if (captionRef.current) tl.set(captionRef.current, { opacity: 0, y: size + 10 });
 
       tl.to(mainGroupRef.current, { opacity: 1, scaleX: 1, scaleY: 1, duration: 2.5, ease: "power2.out", delay: 0.8, onComplete: () => { isReadyRef.current = true; } });
-      tl.to(iconRef.current, { opacity: 0.35, duration: 1.2, ease: "power2.inOut" }, delay + 2.6);
-      tl.to(mainProgressRef.current, { scale: 1, duration: 2.5, ease: "power2.out" }, delay + 0.8);
+      
+      // ✨ 핵심 2: 아이콘이 다시 나타나는 시점을 3.2초로 늦췄습니다.
+      // 플레이스홀더가 3.5초에 걸쳐 사라지는 동안, 새 아이콘이 너무 일찍 등장하여 "중복"되는 것을 막아줍니다.
+      tl.to(iconRef.current, { opacity: 0.35, duration: 1.2, ease: "power2.inOut" }, 3.2);
+      
+      tl.to(mainProgressRef.current, { scale: 1, duration: 2.5, ease: "power2.out" }, 0.8);
       
       return () => { tl.kill(); };
     }, [size, delay]);
 
     return (
       <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-        <div ref={filterLayerRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', filter: `url(#ink-bleed-${id})`, pointerEvents: 'none' }}>
-          <Stage width={stageSize} height={stageSize}><Layer listening={false}>
-            <Group x={x} y={y}>
-              <Group ref={mainGroupRef} scaleX={0} scaleY={0} opacity={0} listening={false}>
-                <Group clipFunc={(ctx) => ctx.arc(0, 0, CLIP_RADIUS, 0, Math.PI * 2)} listening={false}>
-                  <KonvaImage ref={imageRef} image={image} x={0} y={0} width={IMG_SIZE} height={IMG_SIZE} offsetX={CLIP_RADIUS} offsetY={CLIP_RADIUS} opacity={0} listening={false} />
-                </Group>
-                <Ring ref={inkSpreadRef} x={0} y={0} innerRadius={0} outerRadius={size} fillRadialGradientStartPoint={{ x: 0, y: 0 }} fillRadialGradientStartRadius={0} fillRadialGradientEndPoint={{ x: 0, y: 0 }} fillRadialGradientEndRadius={size} fillRadialGradientColorStops={[ 0, color, 0.85, color, 1, `rgba(${r},${g},${b},0)` ]} listening={false} />
-              </Group>
-            </Group>
-          </Layer></Stage>
-        </div>
-
-        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', filter: 'url(#crayon-texture)', pointerEvents: 'none' }}>
-          <Stage width={stageSize} height={stageSize}><Layer listening={false}>
-            <Group x={x} y={y}>
-              <Group ref={iconRef} x={0} y={0} listening={false}>
-                <Path data={iconPathData} stroke="rgba(255, 255, 255, 0.9)" strokeWidth={3} lineCap="round" lineJoin="round" />
-              </Group>
-            </Group>
-          </Layer></Stage>
-        </div>
-
-        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
-          <Stage width={stageSize} height={stageSize}><Layer listening={false}>
-            <Group x={x} y={y}>
-              {caption && (
-                <Text ref={captionRef} text={caption} x={0} y={size + 10} offsetX={100} width={200} align="center" fill="#333333" fontSize={16} fontStyle="bold" fontFamily="'Noto Sans KR', sans-serif" opacity={0} listening={false} />
-              )}
-            </Group>
-          </Layer></Stage>
-        </div>
-
-        {/* ✨ 버그 해결: 이벤트 유실 방지를 위한 부모-자식 중첩 (Nesting) 레이어 */}
+        
         <div style={{
-          position: 'absolute',
-          top: '50%', left: '50%',
+          position: 'absolute', top: '50%', left: '50%',
           width: size * 3.2, height: size * 3.2,
-          transform: 'translate(-50%, -50%)',
-          borderRadius: '50%',
-          zIndex: 30, // 캔버스 최상단에 이벤트 레이어 배치
-          pointerEvents: isDraggingActive ? 'none' : 'auto',
-          display: 'flex', justifyContent: 'center', alignItems: 'center' // 좁은 클릭 영역을 정중앙에 배치
+          transform: 'translate(-50%, -50%)', borderRadius: '50%', zIndex: 10, 
+          pointerEvents: isDraggingActive ? 'none' : 'auto', cursor: 'default'
         }}
         onMouseEnter={() => { isMouseOverRef.current = true; updateHoverState('proximate'); }}
-        onMouseLeave={() => { isMouseOverRef.current = false; updateHoverState('none'); }} // 무조건 none 리셋
-        >
-          <div style={{
-            width: (size + 15) * 2, height: (size + 15) * 2,
-            borderRadius: '50%',
-            cursor: 'pointer'
-          }}
-          onMouseEnter={() => { updateHoverState('full'); }}
-          onMouseLeave={() => { updateHoverState('proximate'); }}
-          onClick={() => !isDraggingActive && isReadyRef.current && onNodeClick?.(id)}
-          />
+        onMouseLeave={() => { isMouseOverRef.current = false; updateHoverState('none'); }}
+        />
+
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, pointerEvents: 'none' }}>
+          <div ref={filterLayerRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', filter: `url(#ink-bleed-${id})`, pointerEvents: 'none' }}>
+            <Stage width={stageSize} height={stageSize}><Layer listening={false}>
+              <Group x={x} y={y}>
+                <Group ref={mainGroupRef} scaleX={0} scaleY={0} opacity={0} listening={false}>
+                  <Group clipFunc={(ctx) => ctx.arc(0, 0, CLIP_RADIUS, 0, Math.PI * 2)} listening={false}>
+                    <KonvaImage ref={imageRef} image={image} x={0} y={0} width={IMG_SIZE} height={IMG_SIZE} offsetX={CLIP_RADIUS} offsetY={CLIP_RADIUS} opacity={0} listening={false} />
+                  </Group>
+                  <Ring ref={inkSpreadRef} x={0} y={0} innerRadius={0} outerRadius={size} fillRadialGradientStartPoint={{ x: 0, y: 0 }} fillRadialGradientStartRadius={0} fillRadialGradientEndPoint={{ x: 0, y: 0 }} fillRadialGradientEndRadius={size} fillRadialGradientColorStops={[ 0, color, 0.85, color, 1, `rgba(${r},${g},${b},0)` ]} listening={false} />
+                </Group>
+              </Group>
+            </Layer></Stage>
+          </div>
+
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', filter: 'url(#crayon-texture)', pointerEvents: 'none' }}>
+            <Stage width={stageSize} height={stageSize}><Layer listening={false}>
+              <Group x={x} y={y}>
+                {/* 만약을 위해 JSX 구조상에서도 최조 투명도를 0으로 이중 설정합니다 */}
+                <Group ref={iconRef} x={0} y={0} opacity={0} listening={false}>
+                  <Path data={iconPathData} stroke="rgba(255, 255, 255, 0.9)" strokeWidth={3} lineCap="round" lineJoin="round" />
+                </Group>
+              </Group>
+            </Layer></Stage>
+          </div>
+
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+            <Stage width={stageSize} height={stageSize}><Layer>
+              <Group x={x} y={y}>
+                {caption && (
+                  <Text ref={captionRef} text={caption} x={0} y={size + 10} offsetX={100} width={200} align="center" fill="#333333" fontSize={16} fontStyle="bold" fontFamily="'Noto Sans KR', sans-serif" opacity={0} listening={false} />
+                )}
+              </Group>
+            </Layer></Stage>
+          </div>
         </div>
+
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%',
+          width: (size + 15) * 2, height: (size + 15) * 2,
+          transform: 'translate(-50%, -50%)', borderRadius: '50%', zIndex: 30,
+          pointerEvents: isDraggingActive ? 'none' : 'auto', cursor: 'pointer'
+        }}
+        onMouseEnter={() => { isMouseOverRef.current = true; updateHoverState('full'); }}
+        onMouseLeave={() => { isMouseOverRef.current = false; updateHoverState('proximate'); }}
+        onClick={() => !isDraggingActive && isReadyRef.current && onNodeClick?.(id)}
+        />
       </div>
     );
   },
