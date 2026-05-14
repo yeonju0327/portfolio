@@ -42,6 +42,8 @@ const InkSpread: React.FC<ExtendedProps> = React.memo(
     const CLIP_RADIUS = size - 5;
     const IMG_SIZE = CLIP_RADIUS * 2;
 
+    const ICON_SCALE = (size / 85) * 1.8;
+
     const rgb = Konva.Util.getRGB(color) || { r: 0, g: 0, b: 0 };
     const { r, g, b } = rgb;
 
@@ -164,26 +166,23 @@ const InkSpread: React.FC<ExtendedProps> = React.memo(
     }, [isDraggingActive, updateHoverState]);
 
     useEffect(() => {
-      // ✨ 핵심 1: 타임라인 딜레이(delay: 0.2)와 상관없이 초기 투명도를 0초 만에 완벽하게 강제 셋팅합니다.
-      // 이렇게 하면 렌더링되자마자 아이콘이 번쩍이는 플래시 현상을 원천 차단할 수 있습니다.
       gsap.set(mainGroupRef.current, { scaleX: 0, scaleY: 0, opacity: 0 });
       gsap.set(inkSpreadRef.current, { innerRadius: 0, outerRadius: size });
       gsap.set(imageRef.current, { opacity: 0 });
-      gsap.set(iconRef.current, { opacity: 0, scaleX: 1.8, scaleY: 1.8 }); 
+      gsap.set(iconRef.current, { opacity: 0, scaleX: ICON_SCALE, scaleY: ICON_SCALE }); 
       if (captionRef.current) gsap.set(captionRef.current, { opacity: 0, y: size + 10 });
 
       const tl = gsap.timeline({ delay });
 
       tl.to(mainGroupRef.current, { opacity: 1, scaleX: 1, scaleY: 1, duration: 2.5, ease: "power2.out", delay: 0.8, onComplete: () => { isReadyRef.current = true; } });
       
-      // ✨ 핵심 2: 아이콘이 다시 나타나는 시점을 3.2초로 늦췄습니다.
-      // 플레이스홀더가 3.5초에 걸쳐 사라지는 동안, 새 아이콘이 너무 일찍 등장하여 "중복"되는 것을 막아줍니다.
-      tl.to(iconRef.current, { opacity: 0.35, duration: 1.2, ease: "power2.inOut" }, 3.2);
+      // ✨ 아이콘 등장 시점을 2.0초로 더 앞당겼습니다. 잉크가 번지는 중간에 스며들듯 나타납니다.
+      tl.to(iconRef.current, { opacity: 0.35, duration: 1.2, ease: "power2.inOut" }, 2.0);
       
       tl.to(mainProgressRef.current, { scale: 1, duration: 2.5, ease: "power2.out" }, 0.8);
       
       return () => { tl.kill(); };
-    }, [size, delay]);
+    }, [size, delay, ICON_SCALE]);
 
     return (
       <div style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -215,8 +214,7 @@ const InkSpread: React.FC<ExtendedProps> = React.memo(
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', filter: 'url(#crayon-texture)', pointerEvents: 'none' }}>
             <Stage width={stageSize} height={stageSize}><Layer listening={false}>
               <Group x={x} y={y}>
-                {/* 만약을 위해 JSX 구조상에서도 최조 투명도를 0으로 이중 설정합니다 */}
-                <Group ref={iconRef} x={0} y={0} opacity={0} listening={false}>
+                <Group ref={iconRef} x={0} y={0} opacity={0} scaleX={ICON_SCALE} scaleY={ICON_SCALE} listening={false}>
                   <Path data={iconPathData} stroke="rgba(255, 255, 255, 0.9)" strokeWidth={3} lineCap="round" lineJoin="round" />
                 </Group>
               </Group>
