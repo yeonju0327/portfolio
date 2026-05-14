@@ -47,19 +47,12 @@ const buildRadialMap = (): MapData => {
     if (!raw) return;
     let size = 110, radiusX = 0, radiusY = 0;
     
-    // ✨ 노드 간격을 이전(좁음)과 직전(넓음)의 정확히 중간으로 조율했습니다.
     if (depth === 0) { 
-      size = 110; 
-      radiusX = 0; 
-      radiusY = 0; 
+      size = 110; radiusX = 0; radiusY = 0; 
     } else if (depth === 1) { 
-      size = 85; 
-      radiusX = 480; // 420과 550의 중간값
-      radiusY = 310; // 260과 360의 중간값
+      size = 85; radiusX = 480; radiusY = 310;
     } else if (depth === 2) { 
-      size = 65; 
-      radiusX = 320; // 280과 360의 중간값
-      radiusY = 210; // 180과 240의 중간값
+      size = 65; radiusX = 320; radiusY = 210;
     }
 
     const x = depth === 0 ? cx : cx + Math.cos(angle) * radiusX;
@@ -206,47 +199,69 @@ const Main = () => {
         </div>
       </div>
 
+      {/* ✨ 대시보드 오버레이 섹션 */}
       {selectedNode && (
-        <div 
-          className={`dashboard ${dashboardPos}`}
-          style={{
-            position: 'fixed',
-            zIndex: 2000,
-            display: 'flex',
-            flexDirection: 'column',
-            padding: '60px',
-            backgroundColor: '#F7F5F0',
-            boxShadow: '0 0 50px rgba(0,0,0,0.1)',
-            border: '1px solid #E2DEC9',
-            animation: 'inkSpreadIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-            ...(dashboardPos === 'left' && { left: 0, top: 0, width: '40vw', height: '100vh' }),
-            ...(dashboardPos === 'right' && { right: 0, top: 0, width: '40vw', height: '100vh' }),
-            ...(dashboardPos === 'top' && { left: 0, top: 0, width: '100vw', height: '50vh' }),
-          }}
-        >
-          <button onClick={handleCloseDashboard} style={{ position: 'absolute', top: '30px', right: '40px', background: 'none', border: 'none', fontSize: '28px', cursor: 'pointer', color: '#333' }}>✕</button>
-          
-          <div style={{ flex: 1, opacity: 0, animation: 'fadeInContent 0.5s 0.4s forwards', display: 'flex', flexDirection: 'column' }}>
-            <h2 style={{ color: selectedNode.color, borderBottom: `4px solid ${selectedNode.color}`, paddingBottom: '15px', fontSize: '2.5rem', margin: 0 }}>
-              {selectedNode.caption}
-            </h2>
-            <p style={{ marginTop: '30px', fontSize: '1.2rem', lineHeight: '1.8', color: '#444' }}>
-              {selectedNode.description}
-            </p>
+        <>
+          {/* 1. 바깥쪽 클릭 감지 레이어 (Backdrop) */}
+          <div 
+            style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1999, backgroundColor: 'rgba(0,0,0,0.05)' }} 
+            onClick={handleCloseDashboard} 
+          />
+
+          {/* 2. 대시보드 팝업 */}
+          <div 
+            className={`dashboard ${dashboardPos}`}
+            style={{
+              position: 'fixed',
+              zIndex: 2000,
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '50px',
+              backgroundColor: '#F7F5F0',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08)',
+              border: '1px solid #E2DEC9',
+              borderRadius: '24px', 
+              animation: 'inkSpreadIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+              ...(dashboardPos === 'left' && { left: '24px', top: '24px', width: '35vw', minWidth: '400px', height: 'calc(100vh - 48px)' }),
+              ...(dashboardPos === 'right' && { right: '24px', top: '24px', width: '35vw', minWidth: '400px', height: 'calc(100vh - 48px)' }),
+              ...(dashboardPos === 'top' && { left: '24px', top: '24px', width: 'calc(100vw - 48px)', height: '45vh' }),
+            }}
+          >
+            <button onClick={handleCloseDashboard} style={{ position: 'absolute', top: '24px', right: '32px', background: 'none', border: 'none', fontSize: '28px', cursor: 'pointer', color: '#333' }}>✕</button>
             
-            <button 
-              className="view-more-btn"
-              style={{
-                marginTop: 'auto', padding: '20px 30px', backgroundColor: selectedNode.color,
-                color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer',
-                fontSize: '1.1rem', fontWeight: 'bold', transition: 'transform 0.2s'
-              }}
-              onClick={() => alert(`${selectedNode.id} 상세 페이지로 전체 확장 이동!`)}
-            >
-              PROJECT DETAIL VIEW
-            </button>
+            <div style={{ flex: 1, opacity: 0, animation: 'fadeInContent 0.5s 0.4s forwards', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+              <h2 style={{ color: selectedNode.color, borderBottom: `4px solid ${selectedNode.color}`, paddingBottom: '15px', fontSize: '2.5rem', margin: 0 }}>
+                {selectedNode.caption}
+              </h2>
+              <p style={{ marginTop: '30px', fontSize: '1.15rem', lineHeight: '1.8', color: '#444' }}>
+                {selectedNode.description}
+              </p>
+              
+              {/* ✨ 버튼 크기 및 위치 조정 */}
+              <button 
+                className="view-more-btn"
+                style={{
+                  marginTop: 'auto', 
+                  padding: '12px 24px', // 패딩 축소
+                  backgroundColor: selectedNode.color,
+                  color: '#fff', 
+                  border: 'none', 
+                  borderRadius: '30px', // 더 둥글게
+                  cursor: 'pointer',
+                  fontSize: '0.95rem', // 폰트 크기 축소
+                  fontWeight: 'bold', 
+                  transition: 'transform 0.2s', 
+                  width: 'fit-content', // 텍스트 길이에 맞춤
+                  alignSelf: dashboardPos === 'top' ? 'center' : 'flex-start', // 상단 모드에선 중앙, 아니면 왼쪽 정렬
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
+                }}
+                onClick={() => alert(`${selectedNode.id} 상세 페이지로 전체 확장 이동!`)}
+              >
+                VIEW PROJECT DETAILS
+              </button>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       <style>{`
@@ -264,7 +279,8 @@ const Main = () => {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .view-more-btn:hover { transform: scale(1.02); }
+        .view-more-btn:hover { transform: translateY(-2px) scale(1.03); }
+        .view-more-btn:active { transform: translateY(0) scale(0.98); }
       `}</style>
     </>
   );
