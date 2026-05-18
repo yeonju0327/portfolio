@@ -8,6 +8,7 @@ import InkDrop from './InkDrop';
 import InkSpread from './InkSpread';
 import NodePlaceholder from './NodePlaceholder';
 import Dashboard from './Dashboard';
+import Sidebar from './Sidebar'; 
 import { useInfiniteCanvas } from '../../../hooks/useInfiniteCanvas'; 
 import { PORTFOLIO_MAP, CENTER, MapData } from './data';
 import { getEdgePoints } from './utils';
@@ -41,23 +42,29 @@ const Main = () => {
     const node = PORTFOLIO_MAP[nodeId];
     if (!node) return;
 
-    let targetScreenPoint = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-    let pos: 'left' | 'right' | 'top' = 'left';
-
-    if (nodeId === 'root') {
-      targetScreenPoint = { x: window.innerWidth / 2, y: window.innerHeight * 0.8 };
-      pos = 'top';
-    } else if (node.x < CENTER) {
-      targetScreenPoint = { x: window.innerWidth * 0.75, y: window.innerHeight / 2 };
-      pos = 'left';
-    } else {
-      targetScreenPoint = { x: window.innerWidth * 0.25, y: window.innerHeight / 2 };
-      pos = 'right';
-    }
+    const targetScreenPoint = { x: window.innerWidth * 0.32, y: window.innerHeight / 2 };
+    const pos = 'right';
 
     setSelectedNode(node);
     setDashboardPos(pos);
     moveCamera(node.x, node.y, targetScreenPoint);
+  }, [moveCamera]);
+
+  // ✨ 수정: 사이드바 탐색 시, 사이드바의 가로 너비(320px)를 제외한 나머지 영역의 정중앙에 카메라를 위치시킴
+  const handleMoveCameraOnly = useCallback((nodeId: string) => {
+    const node = PORTFOLIO_MAP[nodeId];
+    if (!node) return;
+
+    const sidebarWidth = 320;
+    const availableWidth = window.innerWidth - sidebarWidth;
+    
+    // 사이드바 영역 + (남은 영역의 절반) = 가시적인 화면의 정확한 중앙
+    const centerScreenPoint = { 
+      x: sidebarWidth + (availableWidth / 2), 
+      y: window.innerHeight / 2 
+    };
+    
+    moveCamera(node.x, node.y, centerScreenPoint);
   }, [moveCamera]);
 
   const handleCloseDashboard = () => {
@@ -131,6 +138,12 @@ const Main = () => {
           </div>
         </div>
       </div>
+
+      <Sidebar 
+        activeIds={activeIds} 
+        onExpandNode={handleExpandNode} 
+        onMoveCameraOnly={handleMoveCameraOnly} 
+      />
 
       <Dashboard selectedNode={selectedNode} dashboardPos={dashboardPos} onClose={handleCloseDashboard} />
     </>
