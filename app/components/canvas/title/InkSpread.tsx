@@ -1,9 +1,9 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 import { Stage, Layer, Group, Ring, Image as KonvaImage, Text, Path } from "react-konva";
 import useImage from "use-image";
 import { NodeProps } from "./types";
-import { useInkAnimation } from "./useInkAnimation"; // 훅 경로에 맞게 수정
-import { getIconPath } from "./data"; // data.ts 경로에 맞게 수정
+import { useInkAnimation } from "./useInkAnimation"; 
+import { getIconPath } from "./data"; 
 
 interface ExtendedProps extends NodeProps {
   icon?: string;
@@ -11,31 +11,45 @@ interface ExtendedProps extends NodeProps {
   stageSize: number;
   onNodeClick?: (id: string) => void;
   isDraggingActive?: boolean;
+  isAutoExploring?: boolean; // ✨ 상호작용 잠금 플래그 수신
   isSelected?: boolean;
 }
 
 const InkSpread: React.FC<ExtendedProps> = React.memo(
-  ({ id, x, y, color = "#000000", size = 85, stageSize, img = "/images/node-image.jpg", delay = 0, icon = "plus", caption, onNodeClick, isDraggingActive, isSelected }) => {
+  ({ id, x, y, color = "#000000", size = 85, stageSize, img = "/images/node-image.jpg", delay = 0, icon = "plus", caption, onNodeClick, isDraggingActive, isAutoExploring, isSelected }) => {
     
-    // 복잡한 로직은 훅이 전부 처리합니다.
-    const { refs, handlers, isReadyRef, ICON_SCALE, rgb } = useInkAnimation(id, color, size, delay, isDraggingActive, isSelected);
+    // ✨ 드래그 중이거나 자동 탐색 중일 때는 모든 상호작용 차단 및 Hover 애니메이션 무시
+    const disableInteraction = isDraggingActive || isAutoExploring;
+    
+    const { refs, handlers, isReadyRef, ICON_SCALE, rgb } = useInkAnimation(id, color, size, delay, disableInteraction, isSelected);
     const [image] = useImage(img);
 
     const CLIP_RADIUS = size - 5;
     const IMG_SIZE = CLIP_RADIUS * 2;
     const iconPathData = useMemo(() => getIconPath(icon), [icon]);
 
+    // ✨ 마우스 이탈 계산을 위한 Hitbox 레퍼런스
+    const proximateRef = useRef<HTMLDivElement>(null);
+    const fullRef = useRef<HTMLDivElement>(null);
+
     return (
       <div style={{ position: 'relative', width: '100%', height: '100%' }}>
         
         {/* 히트박스 1 (주변) */}
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%', width: size * 3.2, height: size * 3.2,
-          transform: 'translate(-50%, -50%)', borderRadius: '50%', zIndex: 10, 
-          pointerEvents: isDraggingActive ? 'none' : 'auto', cursor: 'default'
-        }}
-        onMouseEnter={handlers.onEnterProximate}
-        onMouseLeave={handlers.onLeaveProximate}
+        <div 
+          ref={proximateRef}
+          style={{
+            position: 'absolute', top: '50%', left: '50%', width: size * 3.2, height: size * 3.2,
+            transform: 'translate(-50%, -50%)', borderRadius: '50%', zIndex: 10, 
+            pointerEvents: disableInteraction ? 'none' : 'auto', cursor: 'default'
+          }}
+          onMouseEnter={handlers.onEnterProximate}
+          onMouseLeave={(e) => {
+            // ✨ 버그 수정: 마우스가 안쪽 중앙 영역(Full)으로 진입해서 발생한 이벤트라면 무시 (깜빡임 방지)
+            if (e.nativeEvent.relatedTarget !== fullRef.current) {
+              handlers.onLeaveProximate();
+            }
+          }}
         />
 
         <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, pointerEvents: 'none' }}>
@@ -74,14 +88,23 @@ const InkSpread: React.FC<ExtendedProps> = React.memo(
         </div>
 
         {/* 히트박스 2 (클릭) */}
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%', width: (size + 15) * 2, height: (size + 15) * 2,
-          transform: 'translate(-50%, -50%)', borderRadius: '50%', zIndex: 30,
-          pointerEvents: isDraggingActive ? 'none' : 'auto', cursor: 'pointer'
-        }}
-        onMouseEnter={handlers.onEnterFull}
-        onMouseLeave={handlers.onLeaveFull}
-        onClick={() => !isDraggingActive && isReadyRef.current && onNodeClick?.(id)}
+        <div 
+          ref={fullRef}
+          style={{
+            position: 'absolute', top: '50%', left: '50%', width: (size + 15) * 2, height: (size + 15) * 2,
+            transform: 'translate(-50%, -50%)', borderRadius: '50%', zIndex: 30,
+            pointerEvents: disableInteraction ? 'none' : 'auto', cursor: 'pointer'
+          }}
+          onMouseEnter={handlers.onEnterFull}
+          onMouseLeave={(e) => {
+            // ✨ 버그 수정: 마우스가 매우 빠르게 화면 밖으로 나갈 때 인식 오류 차단
+            if (e.nativeEvent.relatedTarget === proximateRef.current) {
+              handlers.onLeaveFull(); // 속도를 줄여 주변 영역(Proximate)을 거쳐서 나가는 경우
+            } else {
+              handlers.onLeaveProximate(); // 완전히 허공(Canvas)으로 건너뛰어 나간 경우 강제 초기화
+            }
+          }}
+          onClick={() => !disableInteraction && isReadyRef.current && onNodeClick?.(id)}
         />
 
       </div>

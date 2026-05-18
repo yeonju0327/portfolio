@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Stage, Layer } from 'react-konva';
+import { gsap } from 'gsap'; 
 import InkFilter from './InkFilter';
 import Branch from './Branch';
 import InkDrop from './InkDrop';
@@ -10,7 +11,7 @@ import NodePlaceholder from './NodePlaceholder';
 import Dashboard from './Dashboard';
 import Sidebar from './Sidebar'; 
 import { useInfiniteCanvas } from '../../../hooks/useInfiniteCanvas'; 
-import { PORTFOLIO_MAP, CENTER, MapData } from './data';
+import { PORTFOLIO_MAP, CENTER, MapData, RAW_TREE } from './data';
 import { getEdgePoints } from './utils';
 
 const VIRTUAL_SIZE = 4000;
@@ -22,21 +23,31 @@ const Main = () => {
   const [fadingIds, setFadingIds] = useState<string[]>([]);
   const [selectedNode, setSelectedNode] = useState<MapData[string] | null>(null);
   const [dashboardPos, setDashboardPos] = useState<'left' | 'right' | 'top' | null>(null);
+  
+  const [isAutoExploring, setIsAutoExploring] = useState(false);
 
-  const { viewport, isReady, isDraggingActive, handleMouseDown, moveCamera } = useInfiniteCanvas(VIRTUAL_SIZE);
+  const { viewport, setViewport, isReady, isDraggingActive, handleMouseDown, moveCamera } = useInfiniteCanvas(VIRTUAL_SIZE);
 
   useEffect(() => { setIsClient(true); }, []);
 
   const activeNodes = useMemo(() => activeIds.map(id => PORTFOLIO_MAP[id]), [activeIds]);
 
   const handleExpandNode = useCallback((parentId: string | null, childId: string) => {
-    if (activeIds.includes(childId) || fadingIds.includes(childId)) return;
-    setActiveIds(prev => [...prev, childId]);
-    if (parentId) setLinks(prev => [...prev, { source: parentId, target: childId, delay: 0 }]); 
-    
-    setFadingIds(prev => [...prev, childId]);
-    setTimeout(() => { setFadingIds(prev => prev.filter(id => id !== childId)); }, 3500);
-  }, [activeIds, fadingIds]);
+    setActiveIds(prev => {
+      if (prev.includes(childId)) return prev;
+
+      if (parentId) {
+        setLinks(prevLinks => [...prevLinks, { source: parentId, target: childId, delay: 0 }]);
+      }
+      
+      setFadingIds(prevFading => [...prevFading, childId]);
+      setTimeout(() => { 
+        setFadingIds(currentFading => currentFading.filter(id => id !== childId)); 
+      }, 3500);
+
+      return [...prev, childId];
+    });
+  }, []);
 
   const handleNodeClick = useCallback((nodeId: string) => {
     const node = PORTFOLIO_MAP[nodeId];
@@ -50,15 +61,12 @@ const Main = () => {
     moveCamera(node.x, node.y, targetScreenPoint);
   }, [moveCamera]);
 
-  // ✨ 수정: 사이드바 탐색 시, 사이드바의 가로 너비(320px)를 제외한 나머지 영역의 정중앙에 카메라를 위치시킴
   const handleMoveCameraOnly = useCallback((nodeId: string) => {
     const node = PORTFOLIO_MAP[nodeId];
     if (!node) return;
 
     const sidebarWidth = 320;
     const availableWidth = window.innerWidth - sidebarWidth;
-    
-    // 사이드바 영역 + (남은 영역의 절반) = 가시적인 화면의 정확한 중앙
     const centerScreenPoint = { 
       x: sidebarWidth + (availableWidth / 2), 
       y: window.innerHeight / 2 
@@ -66,6 +74,102 @@ const Main = () => {
     
     moveCamera(node.x, node.y, centerScreenPoint);
   }, [moveCamera]);
+
+  const handleAutoExplore = useCallback(() => {
+    if (isAutoExploring) return;
+    
+    setSelectedNode(null);
+    setDashboardPos(null);
+
+    const simulatedActive = new Set(activeIds);
+    const sequence: { parentId: string, childId: string, candidateCount: number }[] = [];
+    const totalNodes = Object.keys(RAW_TREE).length;
+
+    while (simulatedActive.size < totalNodes) {
+      const candidates: { parentId: string, childId: string }[] = [];
+      
+      simulatedActive.forEach(id => {
+        const node = RAW_TREE[id];
+        if (node && node.children) {
+          node.children.forEach(childId => {
+            if (!simulatedActive.has(childId)) {
+              candidates.push({ parentId: id, childId });
+            }
+          });
+        }
+      });
+
+      if (candidates.length === 0) {
+        if (!simulatedActive.has('root')) {
+          candidates.push({ parentId: '', childId: 'root' });
+        } else {
+          break; 
+        }
+      }
+
+      const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+      simulatedActive.add(chosen.childId);
+      sequence.push({ ...chosen, candidateCount: candidates.length });
+    }
+
+    if (sequence.length === 0) return;
+
+    setIsAutoExploring(true);
+
+    const delays = sequence.map(step => {
+      const baseDelay = Math.max(250, 1100 - (step.candidateCount * 150));
+      return baseDelay + Math.random() * (baseDelay * 0.5); 
+    });
+    
+    const totalDurationSeconds = delays.reduce((acc, val) => acc + val, 0) / 1000;
+
+    // 최종 목표 좌표 및 스케일
+    const targetScale = Math.min(window.innerWidth / 1900, window.innerHeight / 1400); 
+    const targetX = window.innerWidth / 2 - (CENTER * targetScale);
+    const targetY = window.innerHeight / 2 - (CENTER * targetScale);
+
+    const vp = { ...viewport };
+
+    // ✨ 신규 추가 로직: 1단계로 현재 줌 상태에서 정중앙(맵의 중심 CENTER 좌표)으로 1초간 포커싱 이동
+    const centerDuration = 1.0;
+    const centerScale = viewport.scale; // 줌은 유지
+    const centerX = window.innerWidth / 2 - (CENTER * centerScale);
+    const centerY = window.innerHeight / 2 - (CENTER * centerScale);
+
+    const tl = gsap.timeline({
+      onUpdate: () => setViewport({ x: vp.x, y: vp.y, scale: vp.scale })
+    });
+
+    // 1단계: 정중앙 이동
+    tl.to(vp, {
+      x: centerX,
+      y: centerY,
+      duration: centerDuration,
+      ease: "power2.inOut"
+    })
+    // 2단계: 잠시(0.2초) 대기 후, 전체 맵 줌아웃하며 자동 탐색 시퀀스 동기화 시작
+    .to(vp, {
+      x: targetX,
+      y: targetY,
+      scale: targetScale,
+      duration: totalDurationSeconds,
+      ease: "power2.inOut"
+    }, "+=0.2");
+
+    // 시퀀스 렌더링을 중앙 포커싱 애니메이션 시간에 맞춰 지연 시작시킴
+    let accumulatedTime = (centerDuration + 0.2) * 1000;
+    sequence.forEach((step, idx) => {
+      setTimeout(() => {
+        handleExpandNode(step.parentId === '' ? null : step.parentId, step.childId);
+      }, accumulatedTime);
+      accumulatedTime += delays[idx];
+    });
+
+    setTimeout(() => {
+      setIsAutoExploring(false);
+    }, accumulatedTime + 2000);
+
+  }, [activeIds, viewport, setViewport, handleExpandNode, isAutoExploring]);
 
   const handleCloseDashboard = () => {
     setSelectedNode(null);
@@ -76,7 +180,7 @@ const Main = () => {
 
   return (
     <>
-      <div onMouseDown={handleMouseDown} style={{ width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: '#e5e5e5', position: 'relative', userSelect: 'none' }}>
+      <div onMouseDown={handleMouseDown} style={{ width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: '#e5e5e5', position: 'relative', userSelect: 'none', pointerEvents: isAutoExploring ? 'none' : 'auto' }}>
         <svg width="0" height="0" style={{ position: 'absolute', zIndex: -1 }}>
           <filter id="crayon-texture" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
             <feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="3" result="noise" />
@@ -103,7 +207,7 @@ const Main = () => {
             {(!activeIds.includes('root') || fadingIds.includes('root')) && (
               <div style={{ position: 'absolute', left: PORTFOLIO_MAP.root.x - 55, top: PORTFOLIO_MAP.root.y - 55, width: 110, height: 110, filter: 'url(#crayon-texture)', pointerEvents: isDraggingActive ? 'none' : 'auto', borderRadius: '50%' }}>
                 <Stage width={110} height={110}><Layer listening={!isDraggingActive && !fadingIds.includes('root')}>
-                  <NodePlaceholder x={55} y={55} color={PORTFOLIO_MAP.root.color || '#333333'} iconType={PORTFOLIO_MAP.root.icon} targetDelay={0} onClick={() => handleExpandNode(null, 'root')} isFading={fadingIds.includes('root')} isDraggingActive={isDraggingActive} />
+                  <NodePlaceholder x={55} y={55} color={PORTFOLIO_MAP.root.color || '#333333'} iconType={PORTFOLIO_MAP.root.icon} targetDelay={0} onClick={() => handleExpandNode(null, 'root')} isFading={fadingIds.includes('root')} isDraggingActive={isDraggingActive} isAutoExploring={isAutoExploring} />
                 </Layer></Stage>
               </div>
             )}
@@ -113,7 +217,7 @@ const Main = () => {
               return (
                 <div key={`placeholder-${childId}`} style={{ position: 'absolute', left: targetData.x - 55, top: targetData.y - 55, width: 110, height: 110, filter: 'url(#crayon-texture)', pointerEvents: isDraggingActive ? 'none' : 'auto', borderRadius: '50%' }}>
                   <Stage width={110} height={110}><Layer listening={!isDraggingActive && !fadingIds.includes(childId)}>
-                    <NodePlaceholder x={55} y={55} color={targetData.color || '#333333'} iconType={targetData.icon} targetDelay={1.8} onClick={() => handleExpandNode(parentNode.id, childId)} isFading={fadingIds.includes(childId)} isDraggingActive={isDraggingActive} />
+                    <NodePlaceholder x={55} y={55} color={targetData.color || '#333333'} iconType={targetData.icon} targetDelay={1.8} onClick={() => handleExpandNode(parentNode.id, childId)} isFading={fadingIds.includes(childId)} isDraggingActive={isDraggingActive} isAutoExploring={isAutoExploring} />
                   </Layer></Stage>
                 </div>
               );
@@ -125,7 +229,7 @@ const Main = () => {
               const size = node.size ?? 85, STAGE_SIZE = size * 5;
               return (
                 <div key={`spread-${node.id}`} style={{ position: 'absolute', left: node.x - STAGE_SIZE/2, top: node.y - STAGE_SIZE/2, width: STAGE_SIZE, height: STAGE_SIZE, pointerEvents: 'none' }}>
-                  <InkSpread {...node} size={size} stageSize={STAGE_SIZE} x={STAGE_SIZE/2} y={STAGE_SIZE/2} onNodeClick={handleNodeClick} isDraggingActive={isDraggingActive} isSelected={selectedNode?.id === node.id} />
+                  <InkSpread {...node} size={size} stageSize={STAGE_SIZE} x={STAGE_SIZE/2} y={STAGE_SIZE/2} onNodeClick={handleNodeClick} isDraggingActive={isDraggingActive} isAutoExploring={isAutoExploring} isSelected={selectedNode?.id === node.id} />
                 </div>
               );
             })}
@@ -143,6 +247,8 @@ const Main = () => {
         activeIds={activeIds} 
         onExpandNode={handleExpandNode} 
         onMoveCameraOnly={handleMoveCameraOnly} 
+        onAutoExplore={handleAutoExplore} 
+        isAutoExploring={isAutoExploring} 
       />
 
       <Dashboard selectedNode={selectedNode} dashboardPos={dashboardPos} onClose={handleCloseDashboard} />

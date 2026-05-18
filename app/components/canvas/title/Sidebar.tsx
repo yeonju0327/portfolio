@@ -5,9 +5,18 @@ interface SidebarProps {
   activeIds: string[];
   onExpandNode: (parentId: string | null, childId: string) => void;
   onMoveCameraOnly: (nodeId: string) => void;
+  onAutoExplore: () => void; 
+  isAutoExploring: boolean; 
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCameraOnly }) => {
+const hexToRgb = (hex: string) => {
+  const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+  hex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '0,0,0';
+};
+
+const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCameraOnly, onAutoExplore, isAutoExploring }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({ root: true });
 
@@ -16,8 +25,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
     setExpandedNodes(prev => ({ ...prev, [nodeId]: !prev[nodeId] }));
   };
 
-  // 모든 탭 펼치기 로직
   const handleExpandAll = () => {
+    if (isAutoExploring) return;
     const allExpanded: Record<string, boolean> = {};
     Object.keys(RAW_TREE).forEach(key => {
       if (RAW_TREE[key].children && RAW_TREE[key].children.length > 0) {
@@ -27,9 +36,15 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
     setExpandedNodes(allExpanded);
   };
 
-  // ✨ 수정: 모든 탭 닫기 시 최상위 헤드 노드(root)까지 빈 객체로 완전히 접히도록 변경
   const handleCollapseAll = () => {
+    if (isAutoExploring) return;
     setExpandedNodes({});
+  };
+
+  const handleTriggerAutoExplore = () => {
+    if (isAutoExploring) return;
+    setIsOpen(false);
+    onAutoExplore();
   };
 
   const getNodeIcon = (iconType: string, hasChildren: boolean, isActive: boolean) => {
@@ -55,8 +70,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
 
     const textColor = isActive ? '#2C2C2C' : '#999999';
     const fontWeight = isActive ? 'bold' : 'normal';
+    
+    const rgbStr = hexToRgb(node.color || '#333333');
 
     const handleItemClick = () => {
+      if (isAutoExploring) return;
       if (isActive) {
         onMoveCameraOnly(nodeId);
       } else {
@@ -69,20 +87,24 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
     };
 
     return (
-      <div key={nodeId} style={{ marginLeft: `${depth * 16}px`, userSelect: 'none' }}>
+      <div key={nodeId} style={{ marginLeft: `${depth * 8}px`, userSelect: 'none', marginBottom: '2px' }}>
         <div
           onClick={handleItemClick}
           style={{
             display: 'flex',
             alignItems: 'center',
             padding: '6px 8px',
-            borderRadius: '6px',
-            cursor: 'pointer',
+            borderRadius: '0 6px 6px 0',
+            cursor: isAutoExploring ? 'not-allowed' : 'pointer',
+            opacity: isAutoExploring ? 0.6 : 1,
             color: textColor,
             fontWeight: fontWeight,
             fontSize: '0.95rem',
+            backgroundImage: isActive ? `linear-gradient(90deg, rgba(${rgbStr}, 0.25) 0%, rgba(${rgbStr}, 0) 35%)` : 'none',
+            borderLeft: isActive ? `3px solid ${node.color}` : '3px solid transparent',
             backgroundColor: 'transparent',
-            transition: 'background-color 0.2s, color 0.2s',
+            transition: 'background-color 0.2s, color 0.2s, opacity 0.3s',
+            pointerEvents: isAutoExploring ? 'none' : 'auto'
           }}
           className="sidebar-item"
         >
@@ -122,7 +144,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
 
   return (
     <>
-      {/* 서랍 본체 UI */}
       <div
         style={{
           position: 'fixed',
@@ -139,7 +160,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
           flexDirection: 'column',
         }}
       >
-        {/* 상단 타이틀 영역 */}
         <div style={{ padding: '40px 24px 20px 24px', borderBottom: '1px solid #EAE6D5' }}>
           <h3 style={{ margin: 0, color: '#2C2C2C', fontSize: '1.2rem', letterSpacing: '-0.03em' }}>
             MAP REPOSITORY
@@ -149,29 +169,32 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
           </p>
         </div>
 
-        {/* ✨ 수정: 사이드바 맨 위가 아닌, 서랍(리포지토리 트리) 본문 영역 바로 위에 오도록 버튼 컴포넌트 이동 */}
         <div style={{ display: 'flex', gap: '8px', padding: '16px 24px 0 24px' }}>
-          <button className="icon-btn" data-tooltip="모든 탭 펼치기" onClick={handleExpandAll}>
+          <button className="icon-btn" data-tooltip="모든 탭 펼치기" onClick={handleExpandAll} style={{ opacity: isAutoExploring ? 0.4 : 1, cursor: isAutoExploring ? 'not-allowed' : 'pointer' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="7 13 12 18 17 13"></polyline>
               <polyline points="7 6 12 11 17 6"></polyline>
             </svg>
           </button>
-          <button className="icon-btn" data-tooltip="모든 탭 닫기" onClick={handleCollapseAll}>
+          <button className="icon-btn" data-tooltip="모든 탭 닫기" onClick={handleCollapseAll} style={{ opacity: isAutoExploring ? 0.4 : 1, cursor: isAutoExploring ? 'not-allowed' : 'pointer' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="7 11 12 6 17 11"></polyline>
               <polyline points="7 18 12 13 17 18"></polyline>
             </svg>
           </button>
+          <div style={{ width: '1px', backgroundColor: '#E2DEC9', margin: '0 4px' }} />
+          <button className="icon-btn" data-tooltip="지도 자동 탐색" onClick={handleTriggerAutoExplore} style={{ opacity: isAutoExploring ? 0.4 : 1, cursor: isAutoExploring ? 'not-allowed' : 'pointer' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+          </button>
         </div>
 
-        {/* 중단 아래 서랍 내부 리포지토리 영역 */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 24px 16px' }}>
           {renderNodeTree('root')}
         </div>
       </div>
 
-      {/* 서랍 제어 핸들 버튼 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         style={{
@@ -180,17 +203,19 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
           left: isOpen ? '320px' : '0px',
           transform: 'translateY(-50%)',
           zIndex: 1501,
-          width: '24px',
+          width: '26px', 
           height: '64px',
-          backgroundColor: '#F5F3ED',
-          border: '1px solid #E2DEC9',
+          backgroundColor: '#2C2C2C', 
+          border: '1px solid #2C2C2C',
           borderLeft: 'none', 
           borderRadius: '0 12px 12px 0', 
           cursor: 'pointer',
-          boxShadow: '4px 0 12px rgba(0,0,0,0.05)',
-          color: '#555555',
+          boxShadow: '4px 0 16px rgba(0,0,0,0.15)',
+          color: '#FFFFFF', 
           fontSize: '1rem',
-          transition: 'left 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s, color 0.2s',
+          opacity: isAutoExploring ? 0 : 1,
+          pointerEvents: isAutoExploring ? 'none' : 'auto',
+          transition: 'left 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s, opacity 0.4s',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -209,17 +234,16 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
 
       <style>{`
         .sidebar-item:hover {
-          background-color: rgba(0, 0, 0, 0.04);
+          background-color: rgba(0, 0, 0, 0.03) !important;
         }
         .sidebar-toggle-btn:hover {
-          background-color: #EAE6D5;
-          color: #2C2C2C;
+          background-color: #1A1A1A !important;
+          border-color: #1A1A1A !important;
         }
         .icon-btn {
           position: relative;
           background: transparent;
           border: 1px solid #E2DEC9;
-          cursor: pointer;
           color: #888;
           padding: 6px;
           border-radius: 6px;
@@ -237,7 +261,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
           content: attr(data-tooltip);
           position: absolute;
           top: 100%;
-          left: 0;
+          left: 50%;
+          transform: translateX(-50%);
           margin-top: 8px;
           background-color: #2C2C2C;
           color: #FFFFFF;
