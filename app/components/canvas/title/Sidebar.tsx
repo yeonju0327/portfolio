@@ -9,7 +9,6 @@ interface SidebarProps {
   isAutoExploring: boolean; 
 }
 
-// ✨ 노드 컬러 그라데이션용 헬퍼
 const hexToRgb = (hex: string) => {
   const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
   hex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
@@ -17,7 +16,7 @@ const hexToRgb = (hex: string) => {
   return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '0,0,0';
 };
 
-// ✨ 사이드바 전반에 적용될 은은한 종이 질감(Noise) 패턴
+// ✨ 사이드바 종이 질감 복구
 const PAPER_TEXTURE = `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.06'/%3E%3C/svg%3E")`;
 
 const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCameraOnly, onAutoExplore, isAutoExploring }) => {
@@ -51,7 +50,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
     onAutoExplore();
   };
 
-  // ✨ 이모지를 대체하는 깔끔한 라인 드로잉 SVG 아이콘 렌더러 (지터 미사용)
   const renderSVGIcon = (iconType: string, hasChildren: boolean, isActive: boolean) => {
     const iconStyle = { width: '16px', height: '16px', stroke: 'currentColor', strokeWidth: '1.5', fill: 'none', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
     
@@ -73,7 +71,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
         </svg>
       ) : (
         <svg viewBox="0 0 24 24" style={iconStyle}>
-          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+          <path d="M22 19a2 2 0 0 1-2-2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
         </svg>
       );
     }
@@ -138,7 +136,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
           }}
           className="sidebar-item"
         >
-          {/* ✨ 텍스트 화살표(▶)를 대체하는 SVG 쉐브론 */}
           {hasChildren && isActive ? (
             <span
               onClick={(e) => toggleFolder(nodeId, e)}
@@ -187,7 +184,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
           width: '320px',
           height: '100vh',
           backgroundColor: '#F5F3ED',
-          // ✨ 사이드바 전반에 종이 질감 패턴 주입
           backgroundImage: PAPER_TEXTURE,
           borderRight: '1px solid #E2DEC9',
           boxShadow: isOpen ? '4px 0 24px rgba(0,0,0,0.05)' : 'none',
@@ -243,7 +239,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
           width: '26px', 
           height: '64px',
           backgroundColor: '#2C2C2C', 
-          // ✨ 토글 버튼에도 미세한 질감을 넣어 아날로그 느낌 통일
           backgroundImage: PAPER_TEXTURE,
           border: '1px solid #2C2C2C',
           borderLeft: 'none', 
@@ -268,7 +263,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
           transform: isOpen ? 'scaleX(-1)' : 'scaleX(1)', 
           transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)' 
         }}>
-          {/* ✨ 텍스트 화살표(◀)를 대체하는 깔끔한 형태의 SVG 쉐브론 */}
           <svg viewBox="0 0 24 24" style={{ width: '16px', height: '16px', stroke: 'currentColor', strokeWidth: '2.5', fill: 'none', strokeLinecap: 'round', strokeLinejoin: 'round' }}>
             <polyline points="9 18 15 12 9 6"></polyline>
           </svg>
@@ -318,7 +312,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
           transition: opacity 0.2s;
           z-index: 2000;
           box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-          /* 툴팁에도 종이 질감 연장 적용 */
           background-image: ${PAPER_TEXTURE};
         }
         .icon-btn:hover::after {
