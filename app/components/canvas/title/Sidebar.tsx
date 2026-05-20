@@ -3,9 +3,10 @@ import { RAW_TREE } from './data';
 
 interface SidebarProps {
   activeIds: string[];
-  // ✨ customDelay 매개변수 추가
   onExpandNode: (parentId: string | null, childId: string, customDelay?: number) => void;
   onMoveCameraOnly: (nodeId: string) => void;
+  // ✨ 더블 클릭 시 대시보드를 띄우기 위한 함수 Prop 추가
+  onNodeDoubleClick: (nodeId: string) => void; 
   onAutoExplore: () => void; 
   isAutoExploring: boolean; 
 }
@@ -19,7 +20,7 @@ const hexToRgb = (hex: string) => {
 
 const PAPER_TEXTURE = `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.06'/%3E%3C/svg%3E")`;
 
-const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCameraOnly, onAutoExplore, isAutoExploring }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCameraOnly, onNodeDoubleClick, onAutoExplore, isAutoExploring }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({ root: true });
 
@@ -101,12 +102,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
     
     const rgbStr = hexToRgb(node.color || '#333333');
 
+    // ✨ 단일 클릭 핸들러: 이동만 수행
     const handleItemClick = () => {
       if (isAutoExploring) return;
       if (isActive) {
-        onMoveCameraOnly(nodeId);
+        onMoveCameraOnly(nodeId); 
       } else {
-        // ✨ 수정: 카메라가 이동할 시간(1.2초)을 캔버스 측에 전달하여 잉크드랍 지연 시작
         onExpandNode(parentId, nodeId, 1.2);
         onMoveCameraOnly(nodeId);
         if (hasChildren) {
@@ -115,10 +116,19 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
       }
     };
 
+    // ✨ 더블 클릭 핸들러: 대시보드 오픈 및 클릭 판정 수행
+    const handleItemDoubleClick = () => {
+      if (isAutoExploring) return;
+      if (isActive) {
+        onNodeDoubleClick(nodeId);
+      }
+    };
+
     return (
       <div key={nodeId} style={{ marginLeft: `${depth * 8}px`, userSelect: 'none', marginBottom: '2px' }}>
         <div
           onClick={handleItemClick}
+          onDoubleClick={handleItemDoubleClick} // ✨ 더블 클릭 이벤트 바인딩
           style={{
             display: 'flex',
             alignItems: 'center',

@@ -16,10 +16,7 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
 
   const isReadyRef = useRef(false);
   const isDraggingRef = useRef(isDraggingActive);
-  
-  // ✨ [절대 수정 금지] 선택된 노드의 상태를 보호하기 위한 Ref
   const isNodeClickedRef = useRef(false);
-  
   const hoverState = useRef<'none' | 'proximate' | 'full'>('none');
   const isMouseOverRef = useRef(false);
 
@@ -28,9 +25,8 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
   const rgb = Konva.Util.getRGB(color) || { r: 0, g: 0, b: 0 };
 
   const updateGradient = useCallback(() => {
-    // ✨ [절대 수정 금지] 카메라 이동(moveCamera) 중 gsap.killTweensOf()가 호출되어 애니메이션이 끊기더라도,
-    // isSelected 상태라면 강제로 필터 스케일을 0으로, 이너 반경을 최대로 밀어넣어 테두리 증발(Evaporate) 버그를 원천 차단합니다.
-    if (isNodeClickedRef.current) {
+    // ✨ [버그 수정] 노드가 완전히 생성되기 전(isReadyRef.current === false)에는 강제로 파내는 로직을 무시하여 안이 비는 현상 차단
+    if (isNodeClickedRef.current && isReadyRef.current) {
       hoverProxy.current.filterScale = 0;
       hoverProxy.current.inner = HOVER_INNER_RADIUS;
     }
@@ -56,10 +52,7 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
 
   const updateHoverState = useCallback((newState: 'none' | 'proximate' | 'full') => {
     if (isDraggingRef.current || !isReadyRef.current) return;
-    
-    // ✨ [절대 수정 금지] 이미 클릭되어 포커스된 노드는 마우스가 영역을 벗어나도(카메라 이동 등) 상태 강등을 허용하지 않음
     if (isNodeClickedRef.current && newState !== 'full') return; 
-    
     if (hoverState.current === newState) return;
     
     hoverState.current = newState;
@@ -121,7 +114,6 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
     
     if (isSelected) {
       updateHoverState('full');
-      // ✨ [절대 수정 금지] 선택된 노드는 카메라 이동 시 GSAP Ticker를 통해 매 프레임 강제로 updateGradient 호출을 보장
       gsap.ticker.add(updateGradient); 
     } else {
       updateHoverState(isMouseOverRef.current ? 'full' : 'none');
@@ -144,12 +136,27 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
     if (captionRef.current) gsap.set(captionRef.current, { opacity: 0, y: size + 10 });
 
     const tl = gsap.timeline({ delay });
-    tl.to(mainGroupRef.current, { opacity: 1, scaleX: 1, scaleY: 1, duration: 2.5, ease: "power2.out", delay: 0.8, onComplete: () => { isReadyRef.current = true; } });
+    tl.to(mainGroupRef.current, { 
+      opacity: 1, 
+      scaleX: 1, 
+      scaleY: 1, 
+      duration: 2.5, 
+      ease: "power2.out", 
+      delay: 0.8, 
+      onComplete: () => { 
+        isReadyRef.current = true; 
+        // ✨ [버그 수정] 노드가 자라나는 도중에 미리 사이드바 등을 통해 클릭(포커스)된 상태라면,
+        // 애니메이션이 무사히 끝난 직후 0.25초 만에 자연스럽게 full 상태(이미지 페이드인+링 파임)로 전환시킵니다.
+        if (isNodeClickedRef.current) {
+          updateHoverState('full');
+        }
+      } 
+    });
     tl.to(iconRef.current, { opacity: 0.35, duration: 1.2, ease: "power2.inOut" }, 2.0);
     tl.to(mainProgressRef.current, { scale: 1, duration: 2.5, ease: "power2.out" }, 0.8);
     
     return () => { tl.kill(); };
-  }, [size, delay, ICON_SCALE]);
+  }, [size, delay, ICON_SCALE, updateHoverState]);
 
   const onEnterProximate = useCallback(() => { isMouseOverRef.current = true; updateHoverState('proximate'); }, [updateHoverState]);
   const onLeaveProximate = useCallback(() => { isMouseOverRef.current = false; updateHoverState('none'); }, [updateHoverState]);

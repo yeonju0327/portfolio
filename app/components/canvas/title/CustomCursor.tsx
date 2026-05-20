@@ -19,13 +19,14 @@ const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExplor
   useEffect(() => {
     if (typeof window === 'undefined' || !cursorRef.current) return;
 
-    // 마우스 추적 속도 0.02초 유지 (반응성 최우선)
-    const xTo = gsap.quickTo(cursorRef.current, 'x', { duration: 0.02, ease: 'power2.out' });
-    const yTo = gsap.quickTo(cursorRef.current, 'y', { duration: 0.02, ease: 'power2.out' });
+    // ✨ 애니메이션(easing)이 포함된 quickTo 대신, 딜레이 제로(0)인 quickSetter 사용
+    const xSet = gsap.quickSetter(cursorRef.current, 'x', 'px');
+    const ySet = gsap.quickSetter(cursorRef.current, 'y', 'px');
 
     const handleMouseMove = (e: MouseEvent) => {
-      xTo(e.clientX);
-      yTo(e.clientY);
+      // 마우스 좌표를 프레임 단위로 즉각 꽂아 넣어 딜레이를 완벽히 없앱니다.
+      xSet(e.clientX);
+      ySet(e.clientY);
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -58,7 +59,7 @@ const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExplor
         gsap.to(imageRef.current, { scale: 1.1, rotate: -6, duration: 0.2, ease: 'power2.out' });
       } else if (proximateHitbox) {
         setCursorState('proximate');
-        gsap.to(imageRef.current, { scale: 1.03, rotate: -2, duration: 0.3, ease: 'power2.out' });
+        gsap.to(imageRef.current, { scale: 1.05, rotate: -2, duration: 0.3, ease: 'power2.out' });
       } else {
         setCursorState('default');
         gsap.to(imageRef.current, { scale: 1, rotate: 0, duration: 0.3, ease: 'power3.out' });
@@ -72,13 +73,15 @@ const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExplor
   useEffect(() => {
     const handleMouseDown = () => {
       if (isPausedRef.current) return;
-      gsap.to(imageRef.current, { scaleX: 1.15, scaleY: 0.9, duration: 0.1, ease: 'power1.out' });
+      // ✨ 좌우로 찢어지던 scaleX, scaleY 대신 전체 scale을 줄여 종이에 꾹 누르는 연출
+      gsap.to(imageRef.current, { scale: 0.9, rotate: -10, duration: 0.1, ease: 'power1.out' });
     };
     const handleMouseUp = () => {
       if (isPausedRef.current) return;
+      // ✨ 뗐을 때 텐션감 있게 원래 크기(full 상태면 1.1, 아니면 1)로 복귀
       gsap.to(imageRef.current, { 
-        scaleX: cursorState === 'full' ? 1.1 : 1, 
-        scaleY: cursorState === 'full' ? 1.1 : 1, 
+        scale: cursorState === 'full' ? 1.1 : 1,
+        rotate: cursorState === 'full' ? -6 : 0,
         duration: 0.2, 
         ease: 'back.out(2)' 
       });
@@ -101,36 +104,34 @@ const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExplor
       `}</style>
       
       <div
-          ref={cursorRef}
+        ref={cursorRef}
+        style={{
+          position: 'fixed',
+          top: '-32px', 
+          left: '0px',
+          width: '32px',
+          height: '32px',
+          pointerEvents: 'none',
+          zIndex: 99999,
+          willChange: 'transform', // GPU 가속 유지
+        }}
+      >
+        <img
+          ref={imageRef}
+          src="/cursor.png" 
+          alt="custom pen cursor"
           style={{
-            position: 'fixed',
-            // ✨ [수정] 96px에서 32px로 변경하여 펜촉 끝을 마우스 위치에 맞춤
-            top: '-32px', 
-            left: '0px',
-            // ✨ [수정] 너비와 높이를 96에서 32로 축소
-            width: '32px',
-            height: '32px',
-            pointerEvents: 'none',
-            zIndex: 99999,
-            willChange: 'transform',
-          }}
-        >
-          <img
-            ref={imageRef}
-            src="/cursor.png" 
-            alt="custom pen cursor"
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'block',
-              transformOrigin: '0% 100%',
-              transition: 'opacity 0.3s',
-              imageRendering: 'pixelated' as React.CSSProperties['imageRendering'],
-              userSelect: 'none',
-              WebkitUserDrag: 'none'
-            } as React.CSSProperties}
-          />
-        </div>
+            width: '100%',
+            height: '100%',
+            display: 'block',
+            transformOrigin: '0% 100%',
+            transition: 'opacity 0.3s',
+            imageRendering: 'pixelated' as React.CSSProperties['imageRendering'],
+            userSelect: 'none',
+            WebkitUserDrag: 'none'
+          } as React.CSSProperties}
+        />
+      </div>
     </>
   );
 };

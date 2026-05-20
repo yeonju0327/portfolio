@@ -23,11 +23,9 @@ const Main = () => {
   const [links, setLinks] = useState<{source: string, target: string, delay: number}[]>([]);
   const [fadingIds, setFadingIds] = useState<string[]>([]);
   
-  // 대시보드 렌더링용 지연 상태
   const [selectedNode, setSelectedNode] = useState<MapData[string] | null>(null);
   const [dashboardPos, setDashboardPos] = useState<'left' | 'right' | 'top' | null>(null);
   
-  // ✨ [버그 수정] 애니메이션 즉각 동기화용 상태 (대시보드 타이머와 별개로 즉시 적용)
   const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
   
   const [isAutoExploring, setIsAutoExploring] = useState(false);
@@ -71,16 +69,13 @@ const Main = () => {
     setSelectedNode(null);
     setDashboardPos(null);
     
-    // ✨ [절대 수정 금지] 600ms 지연 없이 즉시 포커스 상태를 반영하여 InkSpread의 테두리 증발 버그 원천 차단
     setFocusedNodeId(nodeId);
 
     const targetScreenPoint = { x: window.innerWidth * 0.32, y: window.innerHeight / 2 };
     const pos = 'right';
 
-    // 1. 카메라 이동 먼저 시작
     moveCamera(node.x, node.y, targetScreenPoint);
 
-    // 2. 0.6초 뒤에 대시보드 렌더링
     dashboardTimeoutRef.current = setTimeout(() => {
       setSelectedNode(node);
       setDashboardPos(pos);
@@ -91,7 +86,6 @@ const Main = () => {
     const node = PORTFOLIO_MAP[nodeId];
     if (!node) return;
 
-    // 사이드바에서 이동할 때도 상태 락(Lock)을 걸어줌
     setFocusedNodeId(nodeId);
 
     const sidebarWidth = 320;
@@ -110,7 +104,7 @@ const Main = () => {
     if (dashboardTimeoutRef.current) clearTimeout(dashboardTimeoutRef.current);
     setSelectedNode(null);
     setDashboardPos(null);
-    setFocusedNodeId(null); // 자동 탐색 시 초기화
+    setFocusedNodeId(null); 
 
     const depths: Record<string, number> = { root: 0 };
     const calcDepth = (id: string, d: number) => {
@@ -243,7 +237,7 @@ const Main = () => {
     if (dashboardTimeoutRef.current) clearTimeout(dashboardTimeoutRef.current);
     setSelectedNode(null);
     setDashboardPos(null);
-    setFocusedNodeId(null); // ✨ 대시보드 닫을 때 락 해제
+    setFocusedNodeId(null); 
   };
 
   if (!isClient || !isReady) return null;
@@ -318,7 +312,6 @@ const Main = () => {
               const dynamicDelay = nodeDelays[node.id] ?? node.delay; 
               return (
                 <div key={`spread-${node.id}`} style={{ position: 'absolute', left: node.x - STAGE_SIZE/2, top: node.y - STAGE_SIZE/2, width: STAGE_SIZE, height: STAGE_SIZE, pointerEvents: 'none' }}>
-                  {/* ✨ 지연되는 selectedNode?.id 대신 클릭 즉시 업데이트되는 focusedNodeId를 전달 */}
                   <InkSpread 
                     {...node} 
                     delay={dynamicDelay} 
@@ -350,12 +343,15 @@ const Main = () => {
       <Sidebar 
         activeIds={activeIds} 
         onExpandNode={handleExpandNode} 
-        onMoveCameraOnly={handleMoveCameraOnly} 
+        onMoveCameraOnly={handleMoveCameraOnly}
+        // ✨ 더블클릭 이벤트에 메인 클릭 핸들러 전달 
+        onNodeDoubleClick={handleNodeClick} 
         onAutoExplore={handleAutoExplore} 
         isAutoExploring={isAutoExploring} 
       />
 
       <Dashboard selectedNode={selectedNode} dashboardPos={dashboardPos} onClose={handleCloseDashboard} />
+
       <CustomCursor focusedNodeId={focusedNodeId} isAutoExploring={isAutoExploring} />
     </>
   );
