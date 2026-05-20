@@ -11,7 +11,7 @@ interface NodePlaceholderProps {
   onClick: () => void;
   isFading?: boolean; 
   isDraggingActive?: boolean; 
-  isAutoExploring?: boolean; // ✨ 상호작용 잠금 플래그
+  isAutoExploring?: boolean; 
 }
 
 const NodePlaceholder: React.FC<NodePlaceholderProps> = ({ 
@@ -25,7 +25,6 @@ const NodePlaceholder: React.FC<NodePlaceholderProps> = ({
   const [isReady, setIsReady] = useState(false);
   const isFadingRef = useRef(false);
   
-  // 드래그 중이거나 자동 탐색 중이면 인터랙션 차단
   const disableInteraction = isDraggingActive || isAutoExploring;
 
   const iconPathData = useMemo(() => {
@@ -39,20 +38,19 @@ const NodePlaceholder: React.FC<NodePlaceholderProps> = ({
 
   useEffect(() => {
     if (groupRef.current && dashedRingRef.current && glowRef.current) {
+      // ✨ 해결: 초기 렌더링 시 하드코딩되었던 1.8초를 targetDelay(부모의 딜레이가 가산된 시간)로 변경하여 동기화
       gsap.fromTo(groupRef.current, 
         { scaleX: 0, scaleY: 0, opacity: 0 }, 
         { 
-          scaleX: 1, scaleY: 1, opacity: 1, duration: 1, delay: 1.8, ease: "back.out(1.5)",
-          onComplete: () => { 
-            setIsReady(true); 
-          } 
+          scaleX: 1, scaleY: 1, opacity: 1, duration: 1, delay: targetDelay, ease: "back.out(1.5)",
+          onComplete: () => { setIsReady(true); } 
         }
       );
 
       gsap.to(dashedRingRef.current, { rotation: 360, duration: 15, repeat: -1, ease: "none" });
       gsap.to(glowRef.current, { scaleX: 1.15, scaleY: 1.15, opacity: 0.35, duration: 1.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
     }
-  }, []);
+  }, [targetDelay]);
 
   useEffect(() => {
     if (isFading && !isFadingRef.current && groupRef.current) {
@@ -72,7 +70,6 @@ const NodePlaceholder: React.FC<NodePlaceholderProps> = ({
   }, [isFading, targetDelay]);
 
   const handleSafeClick = (e: any) => {
-    // 자동 탐색 등 비활성 조건 검증 강화
     if (!isReady || disableInteraction || isFading || isFadingRef.current) {
       if (e) e.cancelBubble = true;
       return;
@@ -97,7 +94,7 @@ const NodePlaceholder: React.FC<NodePlaceholderProps> = ({
   return (
     <Group 
       ref={groupRef} x={x} y={y} 
-      listening={isReady && !isFading && !disableInteraction} // 이벤트 리스너 차단
+      listening={isReady && !isFading && !disableInteraction} 
       onClick={handleSafeClick} 
       onTap={handleSafeClick}
       onMouseEnter={handleHoverIn} 

@@ -3,7 +3,8 @@ import { RAW_TREE } from './data';
 
 interface SidebarProps {
   activeIds: string[];
-  onExpandNode: (parentId: string | null, childId: string) => void;
+  // ✨ customDelay 매개변수 추가
+  onExpandNode: (parentId: string | null, childId: string, customDelay?: number) => void;
   onMoveCameraOnly: (nodeId: string) => void;
   onAutoExplore: () => void; 
   isAutoExploring: boolean; 
@@ -16,7 +17,6 @@ const hexToRgb = (hex: string) => {
   return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '0,0,0';
 };
 
-// ✨ 사이드바 종이 질감 복구
 const PAPER_TEXTURE = `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.06'/%3E%3C/svg%3E")`;
 
 const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCameraOnly, onAutoExplore, isAutoExploring }) => {
@@ -106,7 +106,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
       if (isActive) {
         onMoveCameraOnly(nodeId);
       } else {
-        onExpandNode(parentId, nodeId);
+        // ✨ 수정: 카메라가 이동할 시간(1.2초)을 캔버스 측에 전달하여 잉크드랍 지연 시작
+        onExpandNode(parentId, nodeId, 1.2);
         onMoveCameraOnly(nodeId);
         if (hasChildren) {
           setExpandedNodes(prev => ({ ...prev, [nodeId]: true }));

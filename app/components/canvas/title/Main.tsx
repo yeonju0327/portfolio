@@ -25,6 +25,8 @@ const Main = () => {
   const [dashboardPos, setDashboardPos] = useState<'left' | 'right' | 'top' | null>(null);
   
   const [isAutoExploring, setIsAutoExploring] = useState(false);
+  
+  const [nodeDelays, setNodeDelays] = useState<Record<string, number>>({});
 
   const { viewport, setViewport, isReady, isDraggingActive, handleMouseDown, moveCamera } = useInfiniteCanvas(VIRTUAL_SIZE);
 
@@ -32,18 +34,22 @@ const Main = () => {
 
   const activeNodes = useMemo(() => activeIds.map(id => PORTFOLIO_MAP[id]), [activeIds]);
 
-  const handleExpandNode = useCallback((parentId: string | null, childId: string) => {
+  const handleExpandNode = useCallback((parentId: string | null, childId: string, customDelay: number = 0) => {
     setActiveIds(prev => {
       if (prev.includes(childId)) return prev;
 
       if (parentId) {
-        setLinks(prevLinks => [...prevLinks, { source: parentId, target: childId, delay: 0 }]);
+        setLinks(prevLinks => [...prevLinks, { source: parentId, target: childId, delay: customDelay }]);
+      }
+      
+      if (customDelay > 0) {
+        setNodeDelays(prevDelays => ({ ...prevDelays, [childId]: customDelay }));
       }
       
       setFadingIds(prevFading => [...prevFading, childId]);
       setTimeout(() => { 
         setFadingIds(currentFading => currentFading.filter(id => id !== childId)); 
-      }, 3500);
+      }, 3500 + (customDelay * 1000)); 
 
       return [...prev, childId];
     });
@@ -81,8 +87,19 @@ const Main = () => {
     setSelectedNode(null);
     setDashboardPos(null);
 
+    // ✨ 노드별 깊이(Depth) 사전 계산 (루트에서 가까울수록 0에 가까움)
+    const depths: Record<string, number> = { root: 0 };
+    const calcDepth = (id: string, d: number) => {
+      depths[id] = d;
+      if (RAW_TREE[id] && RAW_TREE[id].children) {
+        RAW_TREE[id].children.forEach(childId => calcDepth(childId, d + 1));
+      }
+    };
+    calcDepth('root', 0);
+
     const simulatedActive = new Set(activeIds);
-    const sequence: { parentId: string, childId: string, candidateCount: number }[] = [];
+    // ✨ 한 턴에 여러 개의 노드가 동시에 활성화될 수 있도록 배열의 배열로 구조 변경
+    const sequence: { parentId: string, childId: string }[][] = [];
     const totalNodes = Object.keys(RAW_TREE).length;
 
     while (simulatedActive.size < totalNodes) {
@@ -107,18 +124,54 @@ const Main = () => {
         }
       }
 
-      const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-      simulatedActive.add(chosen.childId);
-      sequence.push({ ...chosen, candidateCount: candidates.length });
+      // ✨ 가중치 부여: 깊이가 얕을수록 높은 확률(weight)을 가지도록 설정
+      let weightedCandidates = candidates.map(c => {
+        const depth = depths[c.parentId || 'root'] ?? 0;
+        const weight = 1 / Math.pow(depth + 1, 2); // Depth 0은 1, Depth 1은 0.25, Depth 2는 0.11의 확률 가중치
+        return { ...c, weight };
+      });
+
+      // ✨ 동시성 설정: 현재 열려있는 후보군이 많을수록 한 번에 확장하는 노드 개수를 늘림 (최대 3개)
+      let pickCount = 1;
+      if (candidates.length >= 4) pickCount = 2;
+      if (candidates.length >= 7) pickCount = 3;
+
+      const stepNodes = [];
+      for (let i = 0; i < pickCount; i++) {
+        if (weightedCandidates.length === 0) break;
+        
+        // 가중치 기반 랜덤 선택(룰렛 휠 선택 방식)
+        const totalWeight = weightedCandidates.reduce((sum, c) => sum + c.weight, 0);
+        let r = Math.random() * totalWeight;
+        let selectedIdx = 0;
+        
+        for (let j = 0; j < weightedCandidates.length; j++) {
+          r -= weightedCandidates[j].weight;
+          if (r <= 0) {
+            selectedIdx = j;
+            break;
+          }
+        }
+        
+        const chosen = weightedCandidates[selectedIdx];
+        stepNodes.push({ parentId: chosen.parentId, childId: chosen.childId });
+        simulatedActive.add(chosen.childId);
+        
+        // 동일 턴에서 중복 선택 방지를 위해 후보군에서 제거
+        weightedCandidates.splice(selectedIdx, 1);
+      }
+      
+      sequence.push(stepNodes);
     }
 
     if (sequence.length === 0) return;
 
     setIsAutoExploring(true);
 
-    const delays = sequence.map(step => {
-      const baseDelay = Math.max(250, 1100 - (step.candidateCount * 150));
-      return baseDelay + Math.random() * (baseDelay * 0.5); 
+    // ✨ 전체 진행 속도 상향 및 동시 활성화 개수에 따른 딜레이 단축
+    const delays = sequence.map(stepNodes => {
+      const baseDelay = Math.max(150, 600 - (stepNodes.length * 120)); // 한 번에 많이 뻗을수록 템포를 빠르게 가져감
+      return baseDelay + Math.random() * (baseDelay * 0.3); 
     });
     
     const totalDurationSeconds = delays.reduce((acc, val) => acc + val, 0) / 1000;
@@ -153,9 +206,12 @@ const Main = () => {
     }, "+=0.2");
 
     let accumulatedTime = (centerDuration + 0.2) * 1000;
-    sequence.forEach((step, idx) => {
+    sequence.forEach((stepNodes, idx) => {
       setTimeout(() => {
-        handleExpandNode(step.parentId === '' ? null : step.parentId, step.childId);
+        // 배열에 담긴 노드들을 동시에 활성화
+        stepNodes.forEach(nodeInfo => {
+          handleExpandNode(nodeInfo.parentId === '' ? null : nodeInfo.parentId, nodeInfo.childId, 0);
+        });
       }, accumulatedTime);
       accumulatedTime += delays[idx];
     });
@@ -175,6 +231,13 @@ const Main = () => {
 
   return (
     <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap');
+      `}</style>
+      <div style={{ fontFamily: "'Nanum Pen Script', cursive", position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -9999 }}>
+        Preload Handwriting Font
+      </div>
+
       <div onMouseDown={handleMouseDown} style={{ width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: '#e5e5e5', position: 'relative', userSelect: 'none', pointerEvents: isAutoExploring ? 'none' : 'auto' }}>
         <svg width="0" height="0" style={{ position: 'absolute', zIndex: -1 }}>
           <filter id="crayon-texture" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
@@ -186,12 +249,11 @@ const Main = () => {
 
         <div style={{ position: 'absolute', width: VIRTUAL_SIZE, height: VIRTUAL_SIZE, transform: `translate3d(${viewport.x}px, ${viewport.y}px, 0) scale(${viewport.scale})`, transformOrigin: '0 0', willChange: 'transform' }}>
           
-          {/* ✨ 해결: 조밀한 무늬 표현을 위해 심리스 배경 이미지를 400px 크기로 축소 타일링 */}
           <div style={{ 
             position: 'absolute', width: '100%', height: '100%', 
             backgroundImage: 'url(/background-image.jpg)', 
             backgroundRepeat: 'repeat', 
-            backgroundSize: '400px auto', 
+            backgroundSize: 'auto', 
             imageRendering: 'high-quality' as any,
             opacity: 0.9 
           }} />
@@ -211,17 +273,20 @@ const Main = () => {
             {(!activeIds.includes('root') || fadingIds.includes('root')) && (
               <div style={{ position: 'absolute', left: PORTFOLIO_MAP.root.x - 55, top: PORTFOLIO_MAP.root.y - 55, width: 110, height: 110, filter: 'url(#crayon-texture)', pointerEvents: isDraggingActive ? 'none' : 'auto', borderRadius: '50%' }}>
                 <Stage width={110} height={110}><Layer listening={!isDraggingActive && !fadingIds.includes('root')}>
-                  <NodePlaceholder x={55} y={55} color={PORTFOLIO_MAP.root.color || '#333333'} iconType={PORTFOLIO_MAP.root.icon} targetDelay={0} onClick={() => handleExpandNode(null, 'root')} isFading={fadingIds.includes('root')} isDraggingActive={isDraggingActive} isAutoExploring={isAutoExploring} />
+                  <NodePlaceholder x={55} y={55} color={PORTFOLIO_MAP.root.color || '#333333'} iconType={PORTFOLIO_MAP.root.icon} targetDelay={0 + (nodeDelays['root'] ?? 0)} onClick={() => handleExpandNode(null, 'root')} isFading={fadingIds.includes('root')} isDraggingActive={isDraggingActive} isAutoExploring={isAutoExploring} />
                 </Layer></Stage>
               </div>
             )}
             {activeNodes.map(parentNode => parentNode.children.map(childId => {
               const targetData = PORTFOLIO_MAP[childId];
               if (!targetData || (activeIds.includes(childId) && !fadingIds.includes(childId))) return null;
+              
+              const parentDelay = nodeDelays[parentNode.id] ?? parentNode.delay ?? 0;
+
               return (
                 <div key={`placeholder-${childId}`} style={{ position: 'absolute', left: targetData.x - 55, top: targetData.y - 55, width: 110, height: 110, filter: 'url(#crayon-texture)', pointerEvents: isDraggingActive ? 'none' : 'auto', borderRadius: '50%' }}>
                   <Stage width={110} height={110}><Layer listening={!isDraggingActive && !fadingIds.includes(childId)}>
-                    <NodePlaceholder x={55} y={55} color={targetData.color || '#333333'} iconType={targetData.icon} targetDelay={1.8} onClick={() => handleExpandNode(parentNode.id, childId)} isFading={fadingIds.includes(childId)} isDraggingActive={isDraggingActive} isAutoExploring={isAutoExploring} />
+                    <NodePlaceholder x={55} y={55} color={targetData.color || '#333333'} iconType={targetData.icon} targetDelay={1.8 + parentDelay} onClick={() => handleExpandNode(parentNode.id, childId)} isFading={fadingIds.includes(childId)} isDraggingActive={isDraggingActive} isAutoExploring={isAutoExploring} />
                   </Layer></Stage>
                 </div>
               );
@@ -231,9 +296,10 @@ const Main = () => {
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 30 }}>
             {activeNodes.map(node => {
               const size = node.size ?? 85, STAGE_SIZE = size * 5;
+              const dynamicDelay = nodeDelays[node.id] ?? node.delay; 
               return (
                 <div key={`spread-${node.id}`} style={{ position: 'absolute', left: node.x - STAGE_SIZE/2, top: node.y - STAGE_SIZE/2, width: STAGE_SIZE, height: STAGE_SIZE, pointerEvents: 'none' }}>
-                  <InkSpread {...node} size={size} stageSize={STAGE_SIZE} x={STAGE_SIZE/2} y={STAGE_SIZE/2} onNodeClick={handleNodeClick} isDraggingActive={isDraggingActive} isAutoExploring={isAutoExploring} isSelected={selectedNode?.id === node.id} />
+                  <InkSpread {...node} delay={dynamicDelay} size={size} stageSize={STAGE_SIZE} x={STAGE_SIZE/2} y={STAGE_SIZE/2} onNodeClick={handleNodeClick} isDraggingActive={isDraggingActive} isAutoExploring={isAutoExploring} isSelected={selectedNode?.id === node.id} />
                 </div>
               );
             })}
@@ -241,7 +307,10 @@ const Main = () => {
 
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 40 }}>
             <Stage width={VIRTUAL_SIZE} height={VIRTUAL_SIZE}><Layer>
-              {activeNodes.map(node => ( <InkDrop key={`drop-${node.id}`} {...node} /> ))}
+              {activeNodes.map(node => {
+                const dynamicDelay = nodeDelays[node.id] ?? node.delay;
+                return <InkDrop key={`drop-${node.id}`} {...node} delay={dynamicDelay} />;
+              })}
             </Layer></Stage>
           </div>
         </div>
