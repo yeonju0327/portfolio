@@ -16,7 +16,10 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
 
   const isReadyRef = useRef(false);
   const isDraggingRef = useRef(isDraggingActive);
+  
+  // ✨ [절대 수정 금지] 선택된 노드의 상태를 보호하기 위한 Ref
   const isNodeClickedRef = useRef(false);
+  
   const hoverState = useRef<'none' | 'proximate' | 'full'>('none');
   const isMouseOverRef = useRef(false);
 
@@ -25,6 +28,13 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
   const rgb = Konva.Util.getRGB(color) || { r: 0, g: 0, b: 0 };
 
   const updateGradient = useCallback(() => {
+    // ✨ [절대 수정 금지] 카메라 이동(moveCamera) 중 gsap.killTweensOf()가 호출되어 애니메이션이 끊기더라도,
+    // isSelected 상태라면 강제로 필터 스케일을 0으로, 이너 반경을 최대로 밀어넣어 테두리 증발(Evaporate) 버그를 원천 차단합니다.
+    if (isNodeClickedRef.current) {
+      hoverProxy.current.filterScale = 0;
+      hoverProxy.current.inner = HOVER_INNER_RADIUS;
+    }
+
     inkSpreadRef.current?.innerRadius(hoverProxy.current.inner);
     const filterMap = document.getElementById(`disp-${id}`);
     if (filterMap) filterMap.setAttribute("scale", hoverProxy.current.filterScale.toString());
@@ -46,7 +56,10 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
 
   const updateHoverState = useCallback((newState: 'none' | 'proximate' | 'full') => {
     if (isDraggingRef.current || !isReadyRef.current) return;
+    
+    // ✨ [절대 수정 금지] 이미 클릭되어 포커스된 노드는 마우스가 영역을 벗어나도(카메라 이동 등) 상태 강등을 허용하지 않음
     if (isNodeClickedRef.current && newState !== 'full') return; 
+    
     if (hoverState.current === newState) return;
     
     hoverState.current = newState;
@@ -55,48 +68,66 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
 
     if (newState === 'full') {
       document.body.style.cursor = "pointer";
-      if (filterLayerRef.current) filterLayerRef.current.style.filter = 'none';
-
+      
       gsap.to(mainGroupRef.current, { scaleX: 1.15, scaleY: 1.15, duration: 0.25, ease: "power2.out" });
       gsap.to(imageRef.current, { opacity: 1, duration: 0.25, ease: "power2.out" });
       gsap.to(iconRef.current, { opacity: 0, duration: 0.25, ease: "power2.out" });
       if (captionRef.current) gsap.to(captionRef.current, { opacity: 1, y: size + 25, duration: 0.25, ease: "power2.out" });
       
-      filterTweenRef.current = gsap.to(hoverProxy.current, { inner: HOVER_INNER_RADIUS, filterScale: 0, duration: 0.25, ease: "power2.out", onUpdate: updateGradient });
+      filterTweenRef.current = gsap.to(hoverProxy.current, { 
+        inner: HOVER_INNER_RADIUS, 
+        filterScale: 0, 
+        duration: 0.25, 
+        ease: "power2.out", 
+        onUpdate: updateGradient 
+      });
 
     } else if (newState === 'proximate') {
       document.body.style.cursor = "default";
-      if (filterLayerRef.current) filterLayerRef.current.style.filter = `url(#ink-bleed-${id})`;
 
       gsap.to(mainGroupRef.current, { scaleX: 1.05, scaleY: 1.05, duration: 0.4, ease: "power2.out" });
       gsap.to(imageRef.current, { opacity: 0, duration: 0.3, ease: "power2.out" });
       gsap.to(iconRef.current, { opacity: 0.8, duration: 0.4, ease: "power2.out" });
       if (captionRef.current) gsap.to(captionRef.current, { opacity: 0, y: size + 10, duration: 0.3, ease: "power2.out" }); 
       
-      filterTweenRef.current = gsap.to(hoverProxy.current, { inner: 0, filterScale: 15, duration: 0.4, ease: "power2.out", onUpdate: updateGradient });
+      filterTweenRef.current = gsap.to(hoverProxy.current, { 
+        inner: 0, 
+        filterScale: 15, 
+        duration: 0.4, 
+        ease: "power2.out", 
+        onUpdate: updateGradient 
+      });
 
     } else {
       document.body.style.cursor = "default";
-      if (filterLayerRef.current) filterLayerRef.current.style.filter = `url(#ink-bleed-${id})`;
 
       gsap.to(mainGroupRef.current, { scaleX: 1, scaleY: 1, duration: 0.35, ease: "power3.out" });
       gsap.to(imageRef.current, { opacity: 0, duration: 0.35, ease: "power3.out" });
       gsap.to(iconRef.current, { opacity: 0.35, duration: 0.35, ease: "power3.out" });
       if (captionRef.current) gsap.to(captionRef.current, { opacity: 0, y: size + 10, duration: 0.35, ease: "power3.out" });
       
-      filterTweenRef.current = gsap.to(hoverProxy.current, { inner: 0, filterScale: 20, duration: 0.35, ease: "power3.out", onUpdate: updateGradient });
+      filterTweenRef.current = gsap.to(hoverProxy.current, { 
+        inner: 0, 
+        filterScale: 20, 
+        duration: 0.35, 
+        ease: "power3.out", 
+        onUpdate: updateGradient 
+      });
     }
-  }, [updateGradient, HOVER_INNER_RADIUS, size, id]);
+  }, [updateGradient, HOVER_INNER_RADIUS, size]);
 
   useEffect(() => {
     isNodeClickedRef.current = isSelected ?? false;
+    
     if (isSelected) {
       updateHoverState('full');
+      // ✨ [절대 수정 금지] 선택된 노드는 카메라 이동 시 GSAP Ticker를 통해 매 프레임 강제로 updateGradient 호출을 보장
       gsap.ticker.add(updateGradient); 
     } else {
       updateHoverState(isMouseOverRef.current ? 'full' : 'none');
       gsap.ticker.remove(updateGradient);
     }
+    
     return () => { gsap.ticker.remove(updateGradient); };
   }, [isSelected, updateHoverState, updateGradient]);
 
@@ -120,7 +151,6 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
     return () => { tl.kill(); };
   }, [size, delay, ICON_SCALE]);
 
-  // 핸들러 반환
   const onEnterProximate = useCallback(() => { isMouseOverRef.current = true; updateHoverState('proximate'); }, [updateHoverState]);
   const onLeaveProximate = useCallback(() => { isMouseOverRef.current = false; updateHoverState('none'); }, [updateHoverState]);
   const onEnterFull = useCallback(() => { isMouseOverRef.current = true; updateHoverState('full'); }, [updateHoverState]);

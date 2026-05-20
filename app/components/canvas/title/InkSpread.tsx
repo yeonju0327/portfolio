@@ -11,16 +11,16 @@ interface ExtendedProps extends NodeProps {
   stageSize: number;
   onNodeClick?: (id: string) => void;
   isDraggingActive?: boolean;
-  isAutoExploring?: boolean; // ✨ 상호작용 잠금 플래그 수신
+  isAutoExploring?: boolean; 
   isSelected?: boolean;
 }
 
 const InkSpread: React.FC<ExtendedProps> = React.memo(
   ({ id, x, y, color = "#000000", size = 85, stageSize, img = "/images/node-image.jpg", delay = 0, icon = "plus", caption, onNodeClick, isDraggingActive, isAutoExploring, isSelected }) => {
     
-    // ✨ 드래그 중이거나 자동 탐색 중일 때는 모든 상호작용 차단 및 Hover 애니메이션 무시
     const disableInteraction = isDraggingActive || isAutoExploring;
     
+    // ✨ useInkAnimation 훅은 Main에서 즉시 전달받은 isSelected를 통해 클릭 직후 강력한 상태 락(Lock)을 가집니다.
     const { refs, handlers, isReadyRef, ICON_SCALE, rgb } = useInkAnimation(id, color, size, delay, disableInteraction, isSelected);
     const [image] = useImage(img);
 
@@ -28,7 +28,6 @@ const InkSpread: React.FC<ExtendedProps> = React.memo(
     const IMG_SIZE = CLIP_RADIUS * 2;
     const iconPathData = useMemo(() => getIconPath(icon), [icon]);
 
-    // ✨ 마우스 이탈 계산을 위한 Hitbox 레퍼런스
     const proximateRef = useRef<HTMLDivElement>(null);
     const fullRef = useRef<HTMLDivElement>(null);
 
@@ -45,7 +44,6 @@ const InkSpread: React.FC<ExtendedProps> = React.memo(
           }}
           onMouseEnter={handlers.onEnterProximate}
           onMouseLeave={(e) => {
-            // ✨ 버그 수정: 마우스가 안쪽 중앙 영역(Full)으로 진입해서 발생한 이벤트라면 무시 (깜빡임 방지)
             if (e.nativeEvent.relatedTarget !== fullRef.current) {
               handlers.onLeaveProximate();
             }
@@ -97,14 +95,19 @@ const InkSpread: React.FC<ExtendedProps> = React.memo(
           }}
           onMouseEnter={handlers.onEnterFull}
           onMouseLeave={(e) => {
-            // ✨ 버그 수정: 마우스가 매우 빠르게 화면 밖으로 나갈 때 인식 오류 차단
             if (e.nativeEvent.relatedTarget === proximateRef.current) {
-              handlers.onLeaveFull(); // 속도를 줄여 주변 영역(Proximate)을 거쳐서 나가는 경우
+              handlers.onLeaveFull(); 
             } else {
-              handlers.onLeaveProximate(); // 완전히 허공(Canvas)으로 건너뛰어 나간 경우 강제 초기화
+              handlers.onLeaveProximate(); 
             }
           }}
-          onClick={() => !disableInteraction && isReadyRef.current && onNodeClick?.(id)}
+          onClick={(e) => {
+            // ✨ 이벤트 버블링 방지 및 확실한 클릭 전달 보장
+            e.stopPropagation();
+            if (!disableInteraction && isReadyRef.current) {
+              onNodeClick?.(id);
+            }
+          }}
         />
 
       </div>

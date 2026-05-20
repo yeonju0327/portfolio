@@ -1,6 +1,6 @@
 'use client'; 
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Stage, Layer } from 'react-konva';
 import { gsap } from 'gsap'; 
 import InkFilter from './InkFilter';
@@ -21,12 +21,18 @@ const Main = () => {
   const [activeIds, setActiveIds] = useState<string[]>([]);
   const [links, setLinks] = useState<{source: string, target: string, delay: number}[]>([]);
   const [fadingIds, setFadingIds] = useState<string[]>([]);
+  
+  // 대시보드 렌더링용 지연 상태
   const [selectedNode, setSelectedNode] = useState<MapData[string] | null>(null);
   const [dashboardPos, setDashboardPos] = useState<'left' | 'right' | 'top' | null>(null);
   
-  const [isAutoExploring, setIsAutoExploring] = useState(false);
+  // ✨ [버그 수정] 애니메이션 즉각 동기화용 상태 (대시보드 타이머와 별개로 즉시 적용)
+  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
   
+  const [isAutoExploring, setIsAutoExploring] = useState(false);
   const [nodeDelays, setNodeDelays] = useState<Record<string, number>>({});
+  
+  const dashboardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { viewport, setViewport, isReady, isDraggingActive, handleMouseDown, moveCamera } = useInfiniteCanvas(VIRTUAL_SIZE);
 
@@ -59,17 +65,33 @@ const Main = () => {
     const node = PORTFOLIO_MAP[nodeId];
     if (!node) return;
 
+    if (dashboardTimeoutRef.current) clearTimeout(dashboardTimeoutRef.current);
+    
+    setSelectedNode(null);
+    setDashboardPos(null);
+    
+    // ✨ [절대 수정 금지] 600ms 지연 없이 즉시 포커스 상태를 반영하여 InkSpread의 테두리 증발 버그 원천 차단
+    setFocusedNodeId(nodeId);
+
     const targetScreenPoint = { x: window.innerWidth * 0.32, y: window.innerHeight / 2 };
     const pos = 'right';
 
-    setSelectedNode(node);
-    setDashboardPos(pos);
+    // 1. 카메라 이동 먼저 시작
     moveCamera(node.x, node.y, targetScreenPoint);
+
+    // 2. 0.6초 뒤에 대시보드 렌더링
+    dashboardTimeoutRef.current = setTimeout(() => {
+      setSelectedNode(node);
+      setDashboardPos(pos);
+    }, 600);
   }, [moveCamera]);
 
   const handleMoveCameraOnly = useCallback((nodeId: string) => {
     const node = PORTFOLIO_MAP[nodeId];
     if (!node) return;
+
+    // 사이드바에서 이동할 때도 상태 락(Lock)을 걸어줌
+    setFocusedNodeId(nodeId);
 
     const sidebarWidth = 320;
     const availableWidth = window.innerWidth - sidebarWidth;
@@ -84,10 +106,11 @@ const Main = () => {
   const handleAutoExplore = useCallback(() => {
     if (isAutoExploring) return;
     
+    if (dashboardTimeoutRef.current) clearTimeout(dashboardTimeoutRef.current);
     setSelectedNode(null);
     setDashboardPos(null);
+    setFocusedNodeId(null); // 자동 탐색 시 초기화
 
-    // ✨ 노드별 깊이(Depth) 사전 계산 (루트에서 가까울수록 0에 가까움)
     const depths: Record<string, number> = { root: 0 };
     const calcDepth = (id: string, d: number) => {
       depths[id] = d;
@@ -98,7 +121,6 @@ const Main = () => {
     calcDepth('root', 0);
 
     const simulatedActive = new Set(activeIds);
-    // ✨ 한 턴에 여러 개의 노드가 동시에 활성화될 수 있도록 배열의 배열로 구조 변경
     const sequence: { parentId: string, childId: string }[][] = [];
     const totalNodes = Object.keys(RAW_TREE).length;
 
@@ -124,14 +146,12 @@ const Main = () => {
         }
       }
 
-      // ✨ 가중치 부여: 깊이가 얕을수록 높은 확률(weight)을 가지도록 설정
       let weightedCandidates = candidates.map(c => {
         const depth = depths[c.parentId || 'root'] ?? 0;
-        const weight = 1 / Math.pow(depth + 1, 2); // Depth 0은 1, Depth 1은 0.25, Depth 2는 0.11의 확률 가중치
+        const weight = 1 / Math.pow(depth + 1, 2); 
         return { ...c, weight };
       });
 
-      // ✨ 동시성 설정: 현재 열려있는 후보군이 많을수록 한 번에 확장하는 노드 개수를 늘림 (최대 3개)
       let pickCount = 1;
       if (candidates.length >= 4) pickCount = 2;
       if (candidates.length >= 7) pickCount = 3;
@@ -140,7 +160,6 @@ const Main = () => {
       for (let i = 0; i < pickCount; i++) {
         if (weightedCandidates.length === 0) break;
         
-        // 가중치 기반 랜덤 선택(룰렛 휠 선택 방식)
         const totalWeight = weightedCandidates.reduce((sum, c) => sum + c.weight, 0);
         let r = Math.random() * totalWeight;
         let selectedIdx = 0;
@@ -157,7 +176,6 @@ const Main = () => {
         stepNodes.push({ parentId: chosen.parentId, childId: chosen.childId });
         simulatedActive.add(chosen.childId);
         
-        // 동일 턴에서 중복 선택 방지를 위해 후보군에서 제거
         weightedCandidates.splice(selectedIdx, 1);
       }
       
@@ -168,9 +186,8 @@ const Main = () => {
 
     setIsAutoExploring(true);
 
-    // ✨ 전체 진행 속도 상향 및 동시 활성화 개수에 따른 딜레이 단축
     const delays = sequence.map(stepNodes => {
-      const baseDelay = Math.max(150, 600 - (stepNodes.length * 120)); // 한 번에 많이 뻗을수록 템포를 빠르게 가져감
+      const baseDelay = Math.max(150, 600 - (stepNodes.length * 120)); 
       return baseDelay + Math.random() * (baseDelay * 0.3); 
     });
     
@@ -208,7 +225,6 @@ const Main = () => {
     let accumulatedTime = (centerDuration + 0.2) * 1000;
     sequence.forEach((stepNodes, idx) => {
       setTimeout(() => {
-        // 배열에 담긴 노드들을 동시에 활성화
         stepNodes.forEach(nodeInfo => {
           handleExpandNode(nodeInfo.parentId === '' ? null : nodeInfo.parentId, nodeInfo.childId, 0);
         });
@@ -223,8 +239,10 @@ const Main = () => {
   }, [activeIds, viewport, setViewport, handleExpandNode, isAutoExploring]);
 
   const handleCloseDashboard = () => {
+    if (dashboardTimeoutRef.current) clearTimeout(dashboardTimeoutRef.current);
     setSelectedNode(null);
     setDashboardPos(null);
+    setFocusedNodeId(null); // ✨ 대시보드 닫을 때 락 해제
   };
 
   if (!isClient || !isReady) return null;
@@ -299,7 +317,19 @@ const Main = () => {
               const dynamicDelay = nodeDelays[node.id] ?? node.delay; 
               return (
                 <div key={`spread-${node.id}`} style={{ position: 'absolute', left: node.x - STAGE_SIZE/2, top: node.y - STAGE_SIZE/2, width: STAGE_SIZE, height: STAGE_SIZE, pointerEvents: 'none' }}>
-                  <InkSpread {...node} delay={dynamicDelay} size={size} stageSize={STAGE_SIZE} x={STAGE_SIZE/2} y={STAGE_SIZE/2} onNodeClick={handleNodeClick} isDraggingActive={isDraggingActive} isAutoExploring={isAutoExploring} isSelected={selectedNode?.id === node.id} />
+                  {/* ✨ 지연되는 selectedNode?.id 대신 클릭 즉시 업데이트되는 focusedNodeId를 전달 */}
+                  <InkSpread 
+                    {...node} 
+                    delay={dynamicDelay} 
+                    size={size} 
+                    stageSize={STAGE_SIZE} 
+                    x={STAGE_SIZE/2} 
+                    y={STAGE_SIZE/2} 
+                    onNodeClick={handleNodeClick} 
+                    isDraggingActive={isDraggingActive} 
+                    isAutoExploring={isAutoExploring} 
+                    isSelected={focusedNodeId === node.id} 
+                  />
                 </div>
               );
             })}
