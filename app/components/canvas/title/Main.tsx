@@ -177,7 +177,6 @@ const Main = () => {
     <>
       <div onMouseDown={handleMouseDown} style={{ width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: '#e5e5e5', position: 'relative', userSelect: 'none', pointerEvents: isAutoExploring ? 'none' : 'auto' }}>
         <svg width="0" height="0" style={{ position: 'absolute', zIndex: -1 }}>
-          {/* ✨ 요소용 크레용 텍스처 복구 (배경에는 안 들어갑니다) */}
           <filter id="crayon-texture" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
             <feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="3" result="noise" />
             <feDisplacementMap in="SourceGraphic" in2="noise" scale="15" xChannelSelector="R" yChannelSelector="G" />
@@ -187,17 +186,16 @@ const Main = () => {
 
         <div style={{ position: 'absolute', width: VIRTUAL_SIZE, height: VIRTUAL_SIZE, transform: `translate3d(${viewport.x}px, ${viewport.y}px, 0) scale(${viewport.scale})`, transformOrigin: '0 0', willChange: 'transform' }}>
           
-          {/* ✨ 배경 다중 블렌딩 적용: 타일링 경계선 붕괴 기법 */}
+          {/* ✨ 해결: 조밀한 무늬 표현을 위해 심리스 배경 이미지를 400px 크기로 축소 타일링 */}
           <div style={{ 
             position: 'absolute', width: '100%', height: '100%', 
-            backgroundImage: 'url(/background-image.jpg), url(/background-image.jpg)', 
+            backgroundImage: 'url(/background-image.jpg)', 
             backgroundRepeat: 'repeat', 
-            backgroundSize: '400px, 733px', // 소수점이 안 떨어지게 크기를 엇갈림
-            backgroundBlendMode: 'multiply', // 겹쳐서 불규칙성 증대
+            backgroundSize: '400px auto', 
+            imageRendering: 'high-quality' as any,
             opacity: 0.9 
           }} />
           
-          {/* 브랜치 및 요소 레이어에만 filter: url(#crayon-texture) 복구 */}
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', filter: 'url(#crayon-texture)', zIndex: 10 }}>
             <Stage width={VIRTUAL_SIZE} height={VIRTUAL_SIZE}><Layer>
               {links.map((link, idx) => {
