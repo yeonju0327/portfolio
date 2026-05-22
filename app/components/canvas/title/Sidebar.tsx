@@ -106,8 +106,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
     const hasChildren = node.children && node.children.length > 0;
     const isFolderExpanded = !!expandedNodes[nodeId];
 
-    const hash = nodeId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const rotation = ((hash % 7) - 3) * 0.8; 
+    const hash = nodeId.split('').reduce((acc, char, idx) => acc + char.charCodeAt(0) * (idx + 1), 0);
+    const rotation = (Math.sin(hash) * 3.5).toFixed(2);
 
     const textColor = isActive ? '#1A1A1A' : '#555555';
     const paperColor = lightenColor(node.color || '#333333', isActive ? 0.82 : 0.9);
@@ -150,21 +150,24 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
           {hasChildren && isActive ? (
             <span
               onClick={(e) => toggleFolder(nodeId, e)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '18px',
-                height: '18px',
-                transform: isFolderExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s',
-                marginRight: '6px',
-                color: '#666'
-              }}
+              className="folder-toggle-btn"
             >
-              <svg viewBox="0 0 24 24" style={{ width: '14px', height: '14px', stroke: 'currentColor', strokeWidth: '2.5', fill: 'none', strokeLinecap: 'round' }}>
-                <polyline points="9 18 15 12 9 6"></polyline>
-              </svg>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '18px',
+                  height: '18px',
+                  transform: isFolderExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s',
+                  color: '#666'
+                }}
+              >
+                <svg viewBox="0 0 24 24" style={{ width: '14px', height: '14px', stroke: 'currentColor', strokeWidth: '2.5', fill: 'none', strokeLinecap: 'round' }}>
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </span>
             </span>
           ) : (
             <span style={{ display: 'inline-block', width: '18px', marginRight: '6px' }} />
@@ -211,8 +214,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
           style={{
             position: 'absolute',
             top: '40px',
-            right: '-60px', 
-            width: '80px', 
+            // ✨ 컨테이너의 영역을 돌출된 시각적 영역(90px)과 완벽히 수학적으로 일치시킴
+            right: '-90px', 
+            width: '90px', 
             height: '85px',
             cursor: 'pointer',
             zIndex: 1501,
@@ -263,11 +267,22 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
       </div>
 
       <style>{`
-        /* 토글 플래그 */
+        /* ✨ 토글 플래그 컨테이너 클릭/인식 범위 대폭 확장 */
+        .flag-toggle-container::before {
+          content: '';
+          position: absolute;
+          top: -15px;
+          bottom: -15px;
+          left: -15px; 
+          right: -20px; /* 열림/닫힘 상관없이 동일하고 넉넉한 히트박스 제공 */
+          z-index: 10;
+        }
+
         .flag-paper {
           position: absolute;
-          left: 0;
-          width: 110px; 
+          /* ✨ 컨테이너를 기준으로 사이드바 안쪽 20px 지점부터 시작하도록 배치 */
+          left: -20px; 
+          width: 110px; /* 20px(삽입) + 90px(돌출) = 110px 고정 */
           height: 32px;
           display: flex;
           align-items: center;
@@ -298,7 +313,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
           content: '';
           position: absolute;
           top: 0;
-          left: 55px; 
+          /* ✨ 왼쪽 끝에서 20px 떨어진 지점 = 사이드바 밖으로 튀어나오는 정확한 경계면에서 그림자 시작 */
+          left: 20px; 
           right: 1px;
           bottom: 1px;
           box-shadow: 2px 3px 6px rgba(0,0,0,0.12);
@@ -374,7 +390,24 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
           transform: rotate(3.5deg) translate(1px, 1px);
         }
 
-        /* 아이콘 버튼 스타일 */
+        .folder-toggle-btn {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          margin-right: 6px;
+        }
+        
+        .folder-toggle-btn::before {
+          content: '';
+          position: absolute;
+          top: -12px;
+          bottom: -12px;
+          left: -14px;
+          right: -2px; 
+          z-index: 10;
+        }
+
         .icon-btn {
           position: relative;
           background: transparent;
@@ -394,7 +427,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
           transform: translateY(-1px);
         }
         
-        /* ✨ 툴팁(캡션) 공통 설정: 크기 축소 */
         .icon-btn::after {
           content: attr(data-tooltip);
           position: absolute;
@@ -404,9 +436,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
           margin-top: 8px;
           background-color: #2C2C2C;
           color: #FFFFFF;
-          padding: 5px 10px; /* 기존 6px 12px에서 축소 */
+          padding: 5px 10px;
           border-radius: 4px;
-          font-size: 0.95rem; /* 기존 1.1rem에서 축소 */
+          font-size: 0.95rem; 
           font-family: "'Nanum Pen Script', cursive";
           letter-spacing: 1px;
           white-space: nowrap;
@@ -418,13 +450,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeIds, onExpandNode, onMoveCamera
           background-image: ${PAPER_TEXTURE};
         }
         
-        /* ✨ 첫 번째 버튼(모든 탭 펼치기): 왼쪽 벽 충돌 방지 */
         .icon-btn:first-of-type::after {
           left: 0;
           transform: translateX(0);
         }
         
-        /* ✨ 마지막 버튼(자동 탐색): 오른쪽 벽 충돌 방지 */
         .icon-btn:last-of-type::after {
           left: auto;
           right: 0;
