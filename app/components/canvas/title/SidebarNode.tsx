@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { RAW_TREE } from './data';
 import { SidebarIcon } from './SidebarIcons';
 
@@ -13,6 +13,7 @@ interface SidebarNodeProps {
   onMoveCameraOnly: (nodeId: string) => void;
   onNodeDoubleClick: (nodeId: string) => void;
   isAutoExploring: boolean;
+  triggerMovementShield: () => void; // ✨ 상위 쉴드 함수 수신
 }
 
 export const lightenColor = (hex: string, factor = 0.85) => {
@@ -35,7 +36,7 @@ export const lightenColor = (hex: string, factor = 0.85) => {
 const SidebarNode: React.FC<SidebarNodeProps> = (props) => {
   const { 
     nodeId, parentId, depth, activeIds, expandedNodes, setExpandedNodes, 
-    onExpandNode, onMoveCameraOnly, onNodeDoubleClick, isAutoExploring 
+    onExpandNode, onMoveCameraOnly, onNodeDoubleClick, isAutoExploring, triggerMovementShield
   } = props;
   
   const node = RAW_TREE[nodeId];
@@ -48,6 +49,26 @@ const SidebarNode: React.FC<SidebarNodeProps> = (props) => {
 
   const hasChildren = node.children && node.children.length > 0;
   const isFolderExpanded = !!expandedNodes[nodeId];
+  
+  const shouldBeOpen = isActive && isFolderExpanded;
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    if (shouldBeOpen) {
+      let frame2: number;
+      const frame1 = requestAnimationFrame(() => {
+        frame2 = requestAnimationFrame(() => {
+          setIsAnimating(true);
+        });
+      });
+      return () => {
+        cancelAnimationFrame(frame1);
+        if (frame2) cancelAnimationFrame(frame2);
+      };
+    } else {
+      setIsAnimating(false);
+    }
+  }, [shouldBeOpen]);
 
   const hash = nodeId.split('').reduce((acc, char, idx) => acc + char.charCodeAt(0) * (idx + 1), 0);
   const rotation = (Math.sin(hash) * 3.5).toFixed(2);
@@ -55,22 +76,27 @@ const SidebarNode: React.FC<SidebarNodeProps> = (props) => {
   const textColor = isActive ? '#1A1A1A' : '#555555';
   const paperColor = lightenColor(node.color || '#333333', isActive ? 0.82 : 0.9);
 
-  const handleItemClick = () => {
+  // ✨ 싱글 클릭 처리: 오직 카메라 무빙만 일으키며 무빙 쉴드를 함께 가동시킵니다.
+  const handleItemClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (isAutoExploring) return;
+    
     if (isActive) {
       onMoveCameraOnly(nodeId); 
+      triggerMovementShield(); // 1.2초간 완벽 격리막 작동
     } else {
       onExpandNode(parentId, nodeId, 1.2);
       onMoveCameraOnly(nodeId);
+      triggerMovementShield(); // 확장 이동 시에도 완벽 격리막 작동
       if (hasChildren) {
-        setTimeout(() => {
-          setExpandedNodes(prev => ({ ...prev, [nodeId]: true }));
-        }, 50);
+        setExpandedNodes(prev => ({ ...prev, [nodeId]: true }));
       }
     }
   };
 
-  const handleItemDoubleClick = () => {
+  // ✨ 더블 클릭 처리: 클릭 판정(대시보드 등)을 전달합니다.
+  const handleItemDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (isAutoExploring) return;
     if (isActive) {
       onNodeDoubleClick(nodeId);
@@ -128,10 +154,10 @@ const SidebarNode: React.FC<SidebarNodeProps> = (props) => {
         <div
           style={{
             display: 'grid',
-            gridTemplateRows: isFolderExpanded ? '1fr' : '0fr',
-            transition: isFolderExpanded 
-              ? 'grid-template-rows 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0.1s' 
-              : 'grid-template-rows 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0s',
+            gridTemplateRows: isAnimating ? '1fr' : '0fr',
+            transitionProperty: 'grid-template-rows',
+            transitionDuration: '0.4s',
+            transitionTimingFunction: 'cubic-bezier(0.25, 1, 0.5, 1)',
             position: 'relative',
             zIndex: 1, 
             marginTop: '-4px', 
@@ -142,11 +168,12 @@ const SidebarNode: React.FC<SidebarNodeProps> = (props) => {
               style={{
                 paddingTop: '8px',
                 marginBottom: '4px',
-                transform: isFolderExpanded ? 'translateY(0)' : 'translateY(-30px)',
-                opacity: isFolderExpanded ? 1 : 0,
-                transition: isFolderExpanded
-                  ? 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0.1s, opacity 0.1s ease-out 0s'
-                  : 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0s, opacity 0.1s ease-in 0.4s',
+                transform: isAnimating ? 'translateY(0)' : 'translateY(-20px)',
+                opacity: isAnimating ? 1 : 0,
+                transitionProperty: 'transform, opacity',
+                transitionDuration: '0.4s, 0.3s',
+                transitionTimingFunction: 'cubic-bezier(0.25, 1, 0.5, 1), ease',
+                transitionDelay: isAnimating ? '0.1s, 0s' : '0s, 0.15s',
               }}
             >
               {node.children.map(childId => (
