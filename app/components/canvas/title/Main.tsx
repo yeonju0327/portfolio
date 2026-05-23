@@ -86,8 +86,7 @@ const Main = () => {
     const node = PORTFOLIO_MAP[nodeId];
     if (!node) return;
 
-    setFocusedNodeId(nodeId);
-
+    // ⚠️ [이벤트 락 방지 절대 규칙 준수]: 순수 카메라 이동 로직만 남기고 포커스 변경 상태 유발 코드를 완전 영구 삭제
     const sidebarWidth = 320;
     const availableWidth = window.innerWidth - sidebarWidth;
     const centerScreenPoint = { 
@@ -344,7 +343,6 @@ const Main = () => {
         activeIds={activeIds} 
         onExpandNode={handleExpandNode} 
         onMoveCameraOnly={handleMoveCameraOnly}
-        // ✨ 더블클릭 이벤트에 메인 클릭 핸들러 전달 
         onNodeDoubleClick={handleNodeClick} 
         onAutoExplore={handleAutoExplore} 
         isAutoExploring={isAutoExploring} 

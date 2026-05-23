@@ -11,18 +11,12 @@ interface SidebarProps {
   isAutoExploring: boolean; 
 }
 
-const CORK_TEXTURE = `
-  linear-gradient(rgba(156, 114, 79, 0.9), rgba(156, 114, 79, 0.9)),
-  url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.25'/%3E%3C/svg%3E")
-`;
-
 const Sidebar: React.FC<SidebarProps> = (props) => {
   const { isAutoExploring, onAutoExplore } = props;
   const [isOpen, setIsOpen] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({ root: true });
   const [isHeadMounted, setIsHeadMounted] = useState(false);
   
-  // ✨ 카메라 1.2초 이동 시 캔버스 노드들의 오작동/호버 프리징을 막기 위한 투명 쉴드 상태
   const [isMovementShieldActive, setIsMovementShieldActive] = useState(false);
 
   useEffect(() => {
@@ -32,7 +26,6 @@ const Sidebar: React.FC<SidebarProps> = (props) => {
     return () => clearTimeout(headTimer);
   }, []);
 
-  // ✨ 카메라가 움직이는 1.2초(1200ms) 동안 화면 전체 포인터 이벤트를 임시 격리
   const triggerMovementShield = () => {
     setIsMovementShieldActive(true);
     setTimeout(() => {
@@ -71,17 +64,28 @@ const Sidebar: React.FC<SidebarProps> = (props) => {
           bottom: '24px', 
           height: 'auto', 
           left: isOpen ? '24px' : '-350px', 
-          width: '340px',
-          backgroundColor: '#9C724F', 
-          backgroundImage: CORK_TEXTURE, 
-          border: '10px solid #5C3A21', 
-          borderRadius: '8px', 
-          boxShadow: isOpen ? '12px 12px 40px rgba(0,0,0,0.4)' : 'none',
+          width: '360px', 
           zIndex: 1500,
           transition: 'left 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
           display: 'flex',
           flexDirection: 'column',
+          boxSizing: 'border-box',
           fontFamily: "'Nanum Pen Script', cursive",
+          
+          // ✨ 1. 테두리 두께 찌그러짐 해결
+          borderStyle: 'solid',
+          borderWidth: '35px', // 원하는 화면상 테두리 두께 (화면에서 보일 실제 두께)
+          borderImageSource: 'url("/images/sidebar.png")', 
+          borderImageSlice: '45 fill', // 원본 이미지에서 테두리로 쓸 두께 (픽셀단위)
+          // stretch 대신 round를 쓰면 테두리가 늘어나는 대신 반복되며 비율이 완벽히 유지됩니다.
+          borderImageRepeat: 'round', 
+          
+          backgroundColor: 'transparent', 
+          
+          // ✨ 2. 투명도 무시 그림자 문제 해결 (box-shadow 완전 제거 -> filter: drop-shadow 사용)
+          // 이미지의 불투명한 픽셀(나무 테두리) 모양을 그대로 따라가는 진짜 그림자 생성
+          filter: isOpen ? 'drop-shadow(14px 14px 20px rgba(0,0,0,0.5))' : 'drop-shadow(0px 0px 0px rgba(0,0,0,0))',
+          boxShadow: 'none', 
         }}
       >
         <div 
@@ -108,64 +112,72 @@ const Sidebar: React.FC<SidebarProps> = (props) => {
           </div>
         </div>
 
-        <div style={{ padding: '34px 24px 20px 24px', borderBottom: '2px dashed rgba(255, 255, 255, 0.2)' }}>
-          <h3 style={{ margin: 0, color: '#FDFCF8', fontSize: '2.2rem', letterSpacing: '0.02em', textShadow: '1px 1px 3px rgba(0,0,0,0.4)' }}>
-            MAP REPOSITORY
-          </h3>
-          <p style={{ margin: '6px 0 0 2px', fontSize: '1.2rem', color: '#E2DEC9', textShadow: '1px 1px 2px rgba(0,0,0,0.4)' }}>
-            인터랙티브 노드 인덱스 탐색기
-          </p>
-        </div>
+        {/* 안쪽 컨텐츠 영역 */}
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            position: 'relative',
+          }}
+        >
+          <div style={{ padding: '24px 24px 20px 24px', borderBottom: '2px dashed rgba(255, 255, 255, 0.2)' }}>
+            <h3 style={{ margin: 0, color: '#FDFCF8', fontSize: '2.2rem', letterSpacing: '0.02em', textShadow: '1px 1px 3px rgba(0,0,0,0.6)' }}>
+              MAP REPOSITORY
+            </h3>
+            <p style={{ margin: '6px 0 0 2px', fontSize: '1.2rem', color: '#E2DEC9', textShadow: '1px 1px 2px rgba(0,0,0,0.6)' }}>
+              인터랙티브 노드 인덱스 탐색기
+            </p>
+          </div>
 
-        <div style={{ display: 'flex', gap: '10px', padding: '16px 24px 0 24px', position: 'relative', zIndex: 10 }}>
-          <button className="icon-btn" data-tooltip="모든 탭 펼치기" onClick={handleExpandAll}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="7 13 12 18 17 13"></polyline>
-              <polyline points="7 6 12 11 17 6"></polyline>
-            </svg>
-          </button>
-          <button className="icon-btn" data-tooltip="모든 탭 닫기" onClick={handleCollapseAll}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="7 11 12 6 17 11"></polyline>
-              <polyline points="7 18 12 13 17 18"></polyline>
-            </svg>
-          </button>
-          <div style={{ width: '2px', backgroundColor: 'rgba(255,255,255,0.2)', margin: '0 6px' }} />
-          <button className="icon-btn" data-tooltip="지도 자동 탐색" onClick={handleTriggerAutoExplore}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="5 3 19 12 5 21 5 3"></polygon>
-            </svg>
-          </button>
-        </div>
+          <div style={{ display: 'flex', gap: '10px', padding: '16px 24px 0 24px', position: 'relative', zIndex: 10 }}>
+            <button className="icon-btn" data-tooltip="모든 탭 펼치기" onClick={handleExpandAll}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="7 13 12 18 17 13"></polyline>
+                <polyline points="7 6 12 11 17 6"></polyline>
+              </svg>
+            </button>
+            <button className="icon-btn" data-tooltip="모든 탭 닫기" onClick={handleCollapseAll}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="7 11 12 6 17 11"></polyline>
+                <polyline points="7 18 12 13 17 18"></polyline>
+              </svg>
+            </button>
+            <div style={{ width: '2px', backgroundColor: 'rgba(255,255,255,0.2)', margin: '0 6px' }} />
+            <button className="icon-btn" data-tooltip="지도 자동 탐색" onClick={handleTriggerAutoExplore}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+            </button>
+          </div>
 
-        <div className="sidebar-scroll" style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 32px 16px', overflowX: 'hidden' }}>
-          <div style={{
-            transform: isHeadMounted ? 'translateY(0)' : 'translateY(-30px)',
-            opacity: isHeadMounted ? 1 : 0,
-            transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0.1s, opacity 0.2s ease-out 0s'
-          }}>
-            <SidebarNode 
-              nodeId="root" 
-              parentId={null} 
-              depth={0} 
-              expandedNodes={expandedNodes}
-              setExpandedNodes={setExpandedNodes}
-              triggerMovementShield={triggerMovementShield} // ✨ 쉴드 트리거 하향 전달
-              {...props} 
-            />
+          <div className="sidebar-scroll" style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 32px 16px', overflowX: 'hidden' }}>
+            <div style={{
+              transform: isHeadMounted ? 'translateY(0)' : 'translateY(-30px)',
+              opacity: isHeadMounted ? 1 : 0,
+              transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0.1s, opacity 0.2s ease-out 0s'
+            }}>
+              <SidebarNode 
+                nodeId="root" 
+                parentId={null} 
+                depth={0} 
+                expandedNodes={expandedNodes}
+                setExpandedNodes={setExpandedNodes}
+                triggerMovementShield={triggerMovementShield} 
+                {...props} 
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ✨ 전역 물리 이벤트 격리 쉴드 레이어 (카메라 가속 이동 중 투과 레이어 쇼크 완전 흡수) */}
       {isMovementShieldActive && (
         <div 
           style={{
             position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
             zIndex: 99999, backgroundColor: 'transparent', pointerEvents: 'auto', cursor: 'default'
           }}
-          onClick={(e) => e.stopPropagation()}
-          onMouseMove={(e) => e.stopPropagation()}
         />
       )}
 
@@ -190,7 +202,7 @@ const Sidebar: React.FC<SidebarProps> = (props) => {
         .folder-toggle-btn::before { content: ''; position: absolute; top: -12px; bottom: -12px; left: -14px; right: -2px; z-index: 10; }
         .icon-btn { position: relative; background: transparent; border: 1px solid rgba(255, 255, 255, 0.25); color: rgba(255, 255, 255, 0.7); padding: 6px; border-radius: 4px; transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.2s; display: flex; align-items: center; justify-content: center; }
         .icon-btn:hover { background-color: rgba(255, 255, 255, 0.15); color: #FFFFFF; border-color: rgba(255, 255, 255, 0.6); transform: translateY(-1px); }
-        .icon-btn::after { content: attr(data-tooltip); position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 8px; background-color: #2C2C2C; color: #FFFFFF; padding: 5px 10px; border-radius: 4px; font-size: 0.95rem; font-family: \"'Nanum Pen Script', cursive\"; letter-spacing: 1px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 2000; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .icon-btn::after { content: attr(data-tooltip); position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 8px; background-color: #2C2C2C; color: #FFFFFF; padding: 5px 10px; border-radius: 4px; font-size: 0.95rem; font-family: "'Nanum Pen Script', cursive"; letter-spacing: 1px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 2000; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
         .icon-btn:first-of-type::after { left: 0; transform: translateX(0); } .icon-btn:last-of-type::after { left: auto; right: 0; transform: translateX(0); } .icon-btn:hover::after { opacity: 1; }
         .sidebar-scroll::-webkit-scrollbar { width: 6px; } .sidebar-scroll::-webkit-scrollbar-track { background: transparent; } .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.25); border-radius: 6px; } .sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.45); }
       `}</style>

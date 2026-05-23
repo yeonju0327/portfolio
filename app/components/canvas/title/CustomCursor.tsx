@@ -16,26 +16,38 @@ const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExplor
 
   const [cursorState, setCursorState] = useState<'default' | 'proximate' | 'full'>('default');
 
+  // ✨ 마우스 물리 좌표를 추적하여 담아둘 Ref
+  const mousePos = useRef({ x: 0, y: 0 });
+
   useEffect(() => {
     if (typeof window === 'undefined' || !cursorRef.current) return;
 
-    // ✨ 애니메이션(easing)이 포함된 quickTo 대신, 딜레이 제로(0)인 quickSetter 사용
     const xSet = gsap.quickSetter(cursorRef.current, 'x', 'px');
     const ySet = gsap.quickSetter(cursorRef.current, 'y', 'px');
 
     const handleMouseMove = (e: MouseEvent) => {
-      // 마우스 좌표를 프레임 단위로 즉각 꽂아 넣어 딜레이를 완벽히 없앱니다.
-      xSet(e.clientX);
-      ySet(e.clientY);
+      // 마우스가 움직이면 좌표값만 업데이트합니다.
+      mousePos.current.x = e.clientX;
+      mousePos.current.y = e.clientY;
+    };
+
+    // ✨ 화면 이동 중에도 사용자의 실제 물리적 마우스 좌표를 
+    // 매 프레임(Tick)마다 강제로 동기화하여 시각적인 멈춤/순간이동 현상을 원천 차단합니다.
+    const renderPosition = () => {
+      xSet(mousePos.current.x);
+      ySet(mousePos.current.y);
     };
 
     window.addEventListener('mousemove', handleMouseMove);
+    gsap.ticker.add(renderPosition);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
+      gsap.ticker.remove(renderPosition);
     };
   }, []);
 
+  // 기존 호버, 오토익스플로어, 클릭 애니메이션 로직 100% 원상 복구
   useEffect(() => {
     isPausedRef.current = isAutoExploring;
     if (isAutoExploring) {
@@ -73,12 +85,10 @@ const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExplor
   useEffect(() => {
     const handleMouseDown = () => {
       if (isPausedRef.current) return;
-      // ✨ 좌우로 찢어지던 scaleX, scaleY 대신 전체 scale을 줄여 종이에 꾹 누르는 연출
       gsap.to(imageRef.current, { scale: 0.9, rotate: -10, duration: 0.1, ease: 'power1.out' });
     };
     const handleMouseUp = () => {
       if (isPausedRef.current) return;
-      // ✨ 뗐을 때 텐션감 있게 원래 크기(full 상태면 1.1, 아니면 1)로 복귀
       gsap.to(imageRef.current, { 
         scale: cursorState === 'full' ? 1.1 : 1,
         rotate: cursorState === 'full' ? -6 : 0,
@@ -113,7 +123,7 @@ const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExplor
           height: '32px',
           pointerEvents: 'none',
           zIndex: 99999,
-          willChange: 'transform', // GPU 가속 유지
+          willChange: 'transform', 
         }}
       >
         <img
