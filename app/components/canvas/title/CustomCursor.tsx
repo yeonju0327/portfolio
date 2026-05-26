@@ -15,7 +15,6 @@ const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExplor
   const isPausedRef = useRef(false);
 
   const [cursorState, setCursorState] = useState<'default' | 'proximate' | 'full'>('default');
-  const [isOverScrollbarState, setIsOverScrollbarState] = useState(false);
 
   // ✨ 마우스 물리 좌표를 추적하여 담아둘 Ref
   const mousePos = useRef({ x: 0, y: 0 });
@@ -26,55 +25,10 @@ const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExplor
     const xSet = gsap.quickSetter(cursorRef.current, 'x', 'px');
     const ySet = gsap.quickSetter(cursorRef.current, 'y', 'px');
 
-    // 스크롤바 영역 위에 마우스가 있는지 확인하는 함수
-    const checkScrollbar = (e: MouseEvent) => {
-      let target = e.target as HTMLElement | null;
-      let overScrollbar = false;
-      while (target) {
-        if (target.scrollHeight > target.clientHeight) {
-          const style = window.getComputedStyle(target);
-          if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
-            const rect = target.getBoundingClientRect();
-            const borderLeft = parseFloat(style.borderLeftWidth) || 0;
-            const borderRight = parseFloat(style.borderRightWidth) || 0;
-            const scrollbarWidth = target.offsetWidth - target.clientWidth - borderLeft - borderRight;
-            
-            if (scrollbarWidth > 0) {
-              const scrollbarLeft = rect.left + borderLeft + target.clientWidth;
-              const scrollbarRight = rect.right - borderRight;
-              if (e.clientX >= scrollbarLeft && e.clientX <= scrollbarRight) {
-                overScrollbar = true;
-                break;
-              }
-            }
-          }
-        }
-        target = target.parentElement;
-      }
-      
-      if (overScrollbar) {
-        document.documentElement.classList.add('use-native-cursor');
-        setIsOverScrollbarState(true);
-      } else {
-        document.documentElement.classList.remove('use-native-cursor');
-        setIsOverScrollbarState(false);
-      }
-    };
-
     const handleMouseMove = (e: MouseEvent) => {
       // 마우스가 움직이면 좌표값만 업데이트합니다.
       mousePos.current.x = e.clientX;
       mousePos.current.y = e.clientY;
-      checkScrollbar(e);
-    };
-
-    const handleMouseUpGlobal = (e: MouseEvent) => {
-      checkScrollbar(e);
-    };
-
-    const handleMouseLeaveWindow = () => {
-      document.documentElement.classList.remove('use-native-cursor');
-      setIsOverScrollbarState(false);
     };
 
     // ✨ 화면 이동 중에도 사용자의 실제 물리적 마우스 좌표를 
@@ -85,16 +39,11 @@ const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExplor
     };
 
     window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUpGlobal);
-    document.addEventListener('mouseleave', handleMouseLeaveWindow);
     gsap.ticker.add(renderPosition);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUpGlobal);
-      document.removeEventListener('mouseleave', handleMouseLeaveWindow);
       gsap.ticker.remove(renderPosition);
-      document.documentElement.classList.remove('use-native-cursor');
     };
   }, []);
 
@@ -159,7 +108,7 @@ const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExplor
   return (
     <>
       <style>{`
-        html:not(.use-native-cursor) * {
+        * {
           cursor: none !important;
         }
       `}</style>
@@ -175,9 +124,7 @@ const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExplor
           pointerEvents: 'none',
           zIndex: 99999,
           willChange: 'transform', 
-          opacity: isOverScrollbarState ? 0 : (isAutoExploring ? 0.5 : 1),
-          visibility: isOverScrollbarState ? 'hidden' : 'visible',
-          transition: 'opacity 0.15s, visibility 0.15s',
+          opacity: isAutoExploring ? 0.5 : 1,
         }}
       >
         <img

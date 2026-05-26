@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { RAW_TREE } from './data';
 import SidebarNode from './SidebarNode';
+import { CustomScrollContainer } from './CustomScrollContainer';
 
 interface SidebarProps {
   activeIds: string[];
@@ -58,6 +59,7 @@ const Sidebar: React.FC<SidebarProps> = (props) => {
   return (
     <>
       <div
+        className="sidebar-container"
         style={{
           position: 'fixed',
           top: '24px', 
@@ -152,7 +154,11 @@ const Sidebar: React.FC<SidebarProps> = (props) => {
             </button>
           </div>
 
-          <div className="sidebar-scroll" style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 32px 16px', overflowX: 'hidden' }}>
+          <CustomScrollContainer 
+            className="sidebar-scroll" 
+            style={{ flex: 1 }}
+            contentStyle={{ padding: '24px 20px 32px 16px' }}
+          >
             <div style={{
               transform: isHeadMounted ? 'translateY(0)' : 'translateY(-30px)',
               opacity: isHeadMounted ? 1 : 0,
@@ -168,7 +174,7 @@ const Sidebar: React.FC<SidebarProps> = (props) => {
                 {...props} 
               />
             </div>
-          </div>
+          </CustomScrollContainer>
         </div>
       </div>
 

@@ -52,6 +52,12 @@ export const useInfiniteCanvas = (virtualSize: number) => {
   }, [virtualSize, clampPosition]);
 
   const handleWheel = useCallback((e: WheelEvent) => {
+    // 마우스 커서가 사이드바나 대시보드 위에 있으면 화면 확대/축소(줌) 동작 차단
+    const target = e.target as HTMLElement | null;
+    if (target && (target.closest('.sidebar-container') || target.closest('.paper-dashboard-container'))) {
+      return; // preventDefault()를 호출하지 않아 스크롤 이벤트가 브라우저에 의해 자연스럽게 처리되도록 유도
+    }
+
     e.preventDefault();
     setViewport(prev => {
       const minScale = Math.max(window.innerWidth / virtualSize, window.innerHeight / virtualSize);

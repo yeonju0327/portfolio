@@ -1,5 +1,6 @@
 import React from 'react';
 import { MapData } from './data';
+import { CustomScrollContainer } from './CustomScrollContainer';
 
 interface DashboardProps {
   selectedNode: MapData[string] | null;
@@ -95,13 +96,18 @@ const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClo
           }} />
 
           {/* 본문 영역에서도 노이즈를 제거하고 가로줄 무늬만 유지 */}
-          <div 
-            style={{ 
-              flex: 1, overflowY: 'auto', paddingRight: '8px', paddingTop: '4px',
-              backgroundImage: `${RULED_LINES_TEXTURE}`,
-              backgroundSize: '100% 34px', backgroundAttachment: 'local' 
-            }} 
+          <CustomScrollContainer 
             className="memo-content-scroll"
+            style={{ flex: 1 }}
+            contentStyle={{ 
+              paddingRight: '8px', 
+              paddingTop: '4px',
+              backgroundImage: `${RULED_LINES_TEXTURE}`,
+              backgroundSize: '100% 34px', 
+              backgroundAttachment: 'local' 
+            }}
+            thumbColor="rgba(160, 155, 125, 0.4)"
+            thumbHoverColor="rgba(160, 155, 125, 0.6)"
           >
             <p style={{ 
               margin: 0, fontSize: '1.55rem', lineHeight: '34px', color: '#2A2A2A', wordBreak: 'keep-all',
@@ -111,7 +117,7 @@ const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClo
             }}>
               {selectedNode.description || '상세 프로젝트 준비중입니다. 인터랙티브 노드 맵 포트폴리오를 통해 세부 정보를 곧 업데이트할 예정입니다.'}
             </p>
-          </div>
+          </CustomScrollContainer>
         </div>
       </div>
 
