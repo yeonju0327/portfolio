@@ -11,6 +11,7 @@ import NodePlaceholder from './NodePlaceholder';
 import Dashboard from './Dashboard';
 import Sidebar from './Sidebar'; 
 import CustomCursor from './CustomCursor';
+import MiniMap from './MiniMap';
 import { useInfiniteCanvas } from '../../../hooks/useInfiniteCanvas'; 
 import { PORTFOLIO_MAP, CENTER, MapData, RAW_TREE } from './data';
 import { getEdgePoints } from './utils';
@@ -349,6 +350,8 @@ const Main = () => {
       />
 
       <Dashboard selectedNode={selectedNode} dashboardPos={dashboardPos} onClose={handleCloseDashboard} />
+
+      <MiniMap viewport={viewport} setViewport={setViewport} activeIds={activeIds} />
 
       <CustomCursor focusedNodeId={focusedNodeId} isAutoExploring={isAutoExploring} />
     </>
