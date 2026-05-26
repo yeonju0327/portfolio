@@ -31,3 +31,123 @@ body {
   overflow: hidden; /* 스크롤바 방지 */
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* 🎨 아날로그 디자인 추가 클래스 */
+
+/* 1. 폴라로이드 사진 스타일 */
+.polaroid-photo {
+  background: #ffffff;
+  padding: 12px 12px 28px 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15), 0 2px 5px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  display: inline-block;
+  transform: rotate(-2deg);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s;
+  position: relative;
+  max-width: 100%;
+}
+
+.polaroid-photo:hover {
+  transform: rotate(1deg) translateY(-4px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22), 0 4px 8px rgba(0, 0, 0, 0.12);
+}
+
+/* 2. 마스킹 테이프 스타일 */
+.masking-tape {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-1deg);
+  width: 90px;
+  height: 24px;
+  background-color: rgba(245, 230, 160, 0.7);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-left: 2px dashed rgba(0, 0, 0, 0.1);
+  border-right: 2px dashed rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* 3. 찢어진 영수증 바로가기 버튼 */
+.torn-receipt-btn {
+  position: relative;
+  background: #ffffff;
+  color: #2C2C2C;
+  font-size: 1.8rem;
+  padding: 16px 28px 20px 28px;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  font-family: 'Nanum Pen Script', cursive;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08), inset 0 0 10px rgba(0, 0, 0, 0.02);
+  /* 아래쪽 톱니바퀴 모양 찢어짐 효과 */
+  clip-path: polygon(
+    0% 0%, 100% 0%, 100% 90%, 
+    95% 100%, 90% 90%, 85% 100%, 80% 90%, 75% 100%, 70% 90%, 65% 100%, 60% 90%, 55% 100%, 50% 90%, 45% 100%, 40% 90%, 35% 100%, 30% 90%, 25% 100%, 20% 90%, 15% 100%, 10% 90%, 5% 100%, 0% 90%
+  );
+  transform: rotate(1deg);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.torn-receipt-btn:hover {
+  transform: rotate(-1deg) translateY(-2px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.torn-receipt-btn:active {
+  transform: scale(0.98) rotate(0deg);
+}
+
+/* 4. 포스트잇/마스킹 테이프 스타일의 기술 스택 태그 */
+.stack-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  margin: 4px;
+  font-size: 1.25rem;
+  color: #333333;
+  position: relative;
+  background-color: var(--tag-bg, #FFF9C4); /* 기본값 연노랑 */
+  box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.1);
+  transform: rotate(var(--tag-rot, -1.5deg));
+  border-left: 2px solid rgba(0,0,0,0.15);
+  font-family: 'Nanum Pen Script', cursive;
+  user-select: none;
+}
+
+.stack-tag::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 6px;
+  height: 6px;
+  box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.15);
+  transform: rotate(45deg);
+}
+
+/* 5. 모바일 반응형 대시보드 애니메이션 및 레이아웃 */
+@keyframes memoSlideUp {
+  0% { transform: translateY(100%) rotate(1deg); opacity: 0; }
+  100% { transform: translateY(0) rotate(0deg); opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  .paper-dashboard-container {
+    left: 16px !important;
+    right: 16px !important;
+    bottom: 0px !important;
+    top: auto !important;
+    width: auto !important;
+    height: 62vh !important;
+    animation: memoSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  }
+
+  .paper-dashboard-container > div:first-child {
+    border-radius: 20px 20px 0 0 !important;
+  }
+}
+
