@@ -74,11 +74,11 @@ const Sidebar: React.FC<SidebarProps> = (props) => {
           
           // ✨ 1. 테두리 두께 찌그러짐 해결
           borderStyle: 'solid',
-          borderWidth: '35px', // 원하는 화면상 테두리 두께 (화면에서 보일 실제 두께)
+          borderWidth: '15px', //원하는 화면상 테두리 두께 (테두리가 얇게 유지되도록 변경)
           borderImageSource: 'url("/images/sidebar.png")', 
-          borderImageSlice: '45 fill', // 원본 이미지에서 테두리로 쓸 두께 (픽셀단위)
-          // stretch 대신 round를 쓰면 테두리가 늘어나는 대신 반복되며 비율이 완벽히 유지됩니다.
-          borderImageRepeat: 'round', 
+          borderImageSlice: '120 fill', // 원본 이미지에서 목재 테두리 전체(120px)를 정확히 슬라이스하여 중앙 영역 연장 시 늘어남 방지
+          // stretch를 사용하여 브라우저 높이가 줄어들어도 세로축 테두리 두께가 왜곡되는 현상을 방지합니다.
+          borderImageRepeat: 'stretch', 
           
           backgroundColor: 'transparent', 
           
