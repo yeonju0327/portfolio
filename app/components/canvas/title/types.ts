@@ -7,6 +7,8 @@ export interface NodeProps {
   img?: string;
   delay?: number;
   caption?: string; // 추가된 캡션 속성
+  tags?: string[]; // 추가된 기술 스택 태그 속성
+  linkUrl?: string; // 추가된 프로젝트 외부 링크 속성
 }
 
 export interface BranchProps {
