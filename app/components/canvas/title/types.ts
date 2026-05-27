@@ -19,4 +19,5 @@ export interface BranchProps {
   startColor: string;
   endColor: string;
   delay?: number;
+  isRestored?: boolean;
 }

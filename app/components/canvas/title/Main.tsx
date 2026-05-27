@@ -10,7 +10,6 @@ import InkSpread from './InkSpread';
 import NodePlaceholder from './NodePlaceholder';
 import Dashboard from './Dashboard';
 import Sidebar from './Sidebar'; 
-import CustomCursor from './CustomCursor';
 import MiniMap from './MiniMap';
 import { useInfiniteCanvas } from '../../../hooks/useInfiniteCanvas'; 
 import { PORTFOLIO_MAP, CENTER, MapData, RAW_TREE } from './data';
@@ -19,24 +18,127 @@ import { getEdgePoints } from './utils';
 const VIRTUAL_SIZE = 4000;
 
 const Main = () => {
+  const isRestoredRef = useRef(typeof window !== 'undefined' ? sessionStorage.getItem('portfolio_should_restore') === 'true' : false);
+  const [isRestored, setIsRestored] = useState(() => isRestoredRef.current);
   const [isClient, setIsClient] = useState(false);
-  const [activeIds, setActiveIds] = useState<string[]>([]);
-  const [links, setLinks] = useState<{source: string, target: string, delay: number}[]>([]);
+  const [activeIds, setActiveIds] = useState<string[]>(() => {
+    if (typeof window !== 'undefined' && isRestoredRef.current) {
+      const saved = sessionStorage.getItem('portfolio_active_ids');
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
+  const [links, setLinks] = useState<{source: string, target: string, delay: number}[]>(() => {
+    if (typeof window !== 'undefined' && isRestoredRef.current) {
+      const saved = sessionStorage.getItem('portfolio_links');
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
   const [fadingIds, setFadingIds] = useState<string[]>([]);
   
-  const [selectedNode, setSelectedNode] = useState<MapData[string] | null>(null);
-  const [dashboardPos, setDashboardPos] = useState<'left' | 'right' | 'top' | null>(null);
+  const [selectedNode, setSelectedNode] = useState<MapData[string] | null>(() => {
+    if (typeof window !== 'undefined' && isRestoredRef.current) {
+      const savedFocused = sessionStorage.getItem('portfolio_focused_node');
+      if (savedFocused) {
+        return PORTFOLIO_MAP[savedFocused] || null;
+      }
+    }
+    return null;
+  });
+  const [dashboardPos, setDashboardPos] = useState<'left' | 'right' | 'top' | null>(() => {
+    if (typeof window !== 'undefined' && isRestoredRef.current) {
+      const savedFocused = sessionStorage.getItem('portfolio_focused_node');
+      if (savedFocused && PORTFOLIO_MAP[savedFocused]) {
+        return 'right';
+      }
+    }
+    return null;
+  });
   
-  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
+  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined' && isRestoredRef.current) {
+      return sessionStorage.getItem('portfolio_focused_node');
+    }
+    return null;
+  });
   
   const [isAutoExploring, setIsAutoExploring] = useState(false);
-  const [nodeDelays, setNodeDelays] = useState<Record<string, number>>({});
+  const [nodeDelays, setNodeDelays] = useState<Record<string, number>>(() => {
+    if (typeof window !== 'undefined' && isRestoredRef.current) {
+      const saved = sessionStorage.getItem('portfolio_node_delays');
+      return saved ? JSON.parse(saved) : {};
+    }
+    return {};
+  });
   
   const dashboardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { viewport, setViewport, viewportRef, isReady, isDraggingActive, handleMouseDown, moveCamera } = useInfiniteCanvas(VIRTUAL_SIZE);
+  const { viewport, setViewport, viewportRef, isReady, isDraggingActive, handleMouseDown, moveCamera } = useInfiniteCanvas(VIRTUAL_SIZE, isRestoredRef.current);
 
   useEffect(() => { setIsClient(true); }, []);
+
+  // 바디 어트리뷰트 동기화 (최상위 CustomCursor 제어용)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (focusedNodeId) {
+      document.body.setAttribute('data-focused-node', focusedNodeId);
+    } else {
+      document.body.removeAttribute('data-focused-node');
+    }
+  }, [focusedNodeId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (isAutoExploring) {
+      document.body.setAttribute('data-auto-exploring', 'true');
+    } else {
+      document.body.removeAttribute('data-auto-exploring');
+    }
+  }, [isAutoExploring]);
+
+  // 노드 상태 세션스토리지에 저장
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('portfolio_active_ids', JSON.stringify(activeIds));
+      sessionStorage.setItem('portfolio_links', JSON.stringify(links));
+      sessionStorage.setItem('portfolio_node_delays', JSON.stringify(nodeDelays));
+    }
+  }, [activeIds, links, nodeDelays]);
+
+  // 대시보드 포커스 세션스토리지 저장
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (focusedNodeId) {
+        sessionStorage.setItem('portfolio_focused_node', focusedNodeId);
+      } else {
+        sessionStorage.removeItem('portfolio_focused_node');
+      }
+    }
+  }, [focusedNodeId]);
+
+  // 마운트 시 대시보드 포커스 복원 및 복원 플래그 소모 (없을 시 일괄 삭제)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    if (isRestoredRef.current) {
+      // 복원 플래그 소모
+      sessionStorage.removeItem('portfolio_should_restore');
+      // 마운트 완료 후 일정 시간 뒤에 복원 상태를 해제하여 이후 애니메이션이 동작하게 함
+      const timer = setTimeout(() => {
+        setIsRestored(false);
+      }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      // 새로고침이나 첫 진입의 경우 세션 상태 일괄 완전 파괴
+      sessionStorage.removeItem('portfolio_viewport');
+      sessionStorage.removeItem('portfolio_active_ids');
+      sessionStorage.removeItem('portfolio_links');
+      sessionStorage.removeItem('portfolio_node_delays');
+      sessionStorage.removeItem('portfolio_focused_node');
+      sessionStorage.removeItem('portfolio_sidebar_open');
+    }
+  }, []);
 
   const activeNodes = useMemo(() => activeIds.map(id => PORTFOLIO_MAP[id]), [activeIds]);
 
@@ -287,7 +389,7 @@ const Main = () => {
                 const s = PORTFOLIO_MAP[link.source], t = PORTFOLIO_MAP[link.target];
                 if (!s || !t) return null;
                 const { startX, startY, endX, endY } = getEdgePoints(s, t);
-                return <Branch key={`branch-${idx}`} startX={startX} startY={startY} endX={endX} endY={endY} startColor={s.color || '#333'} endColor={t.color || '#333'} delay={link.delay} />;
+                return <Branch key={`branch-${idx}`} startX={startX} startY={startY} endX={endX} endY={endY} startColor={s.color || '#333'} endColor={t.color || '#333'} delay={link.delay} isRestored={isRestoredRef.current} />;
               })}
             </Layer></Stage>
           </div>
@@ -296,7 +398,7 @@ const Main = () => {
             {(!activeIds.includes('root') || fadingIds.includes('root')) && (
               <div style={{ position: 'absolute', left: PORTFOLIO_MAP.root.x - 55, top: PORTFOLIO_MAP.root.y - 55, width: 110, height: 110, filter: 'url(#crayon-texture)', pointerEvents: isDraggingActive ? 'none' : 'auto', borderRadius: '50%' }}>
                 <Stage width={110} height={110}><Layer listening={!isDraggingActive && !fadingIds.includes('root')}>
-                  <NodePlaceholder x={55} y={55} color={PORTFOLIO_MAP.root.color || '#333333'} iconType={PORTFOLIO_MAP.root.icon} targetDelay={0 + (nodeDelays['root'] ?? 0)} onClick={() => handleExpandNode(null, 'root')} isFading={fadingIds.includes('root')} isDraggingActive={isDraggingActive} isAutoExploring={isAutoExploring} />
+                  <NodePlaceholder x={55} y={55} color={PORTFOLIO_MAP.root.color || '#333333'} iconType={PORTFOLIO_MAP.root.icon} targetDelay={0 + (nodeDelays['root'] ?? 0)} onClick={() => handleExpandNode(null, 'root')} isFading={fadingIds.includes('root')} isDraggingActive={isDraggingActive} isAutoExploring={isAutoExploring} isRestored={isRestoredRef.current} />
                 </Layer></Stage>
               </div>
             )}
@@ -309,7 +411,7 @@ const Main = () => {
               return (
                 <div key={`placeholder-${childId}`} style={{ position: 'absolute', left: targetData.x - 55, top: targetData.y - 55, width: 110, height: 110, filter: 'url(#crayon-texture)', pointerEvents: isDraggingActive ? 'none' : 'auto', borderRadius: '50%' }}>
                   <Stage width={110} height={110}><Layer listening={!isDraggingActive && !fadingIds.includes(childId)}>
-                    <NodePlaceholder x={55} y={55} color={targetData.color || '#333333'} iconType={targetData.icon} targetDelay={1.8 + parentDelay} onClick={() => handleExpandNode(parentNode.id, childId)} isFading={fadingIds.includes(childId)} isDraggingActive={isDraggingActive} isAutoExploring={isAutoExploring} />
+                    <NodePlaceholder x={55} y={55} color={targetData.color || '#333333'} iconType={targetData.icon} targetDelay={1.8 + parentDelay} onClick={() => handleExpandNode(parentNode.id, childId)} isFading={fadingIds.includes(childId)} isDraggingActive={isDraggingActive} isAutoExploring={isAutoExploring} isRestored={isRestoredRef.current} />
                   </Layer></Stage>
                 </div>
               );
@@ -333,6 +435,7 @@ const Main = () => {
                     isDraggingActive={isDraggingActive} 
                     isAutoExploring={isAutoExploring} 
                     isSelected={focusedNodeId === node.id} 
+                    isRestored={isRestoredRef.current}
                   />
                 </div>
               );
@@ -341,7 +444,7 @@ const Main = () => {
 
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 40 }}>
             <Stage width={VIRTUAL_SIZE} height={VIRTUAL_SIZE}><Layer>
-              {activeNodes.map(node => {
+              {!isRestoredRef.current && activeNodes.map(node => {
                 const dynamicDelay = nodeDelays[node.id] ?? node.delay;
                 return <InkDrop key={`drop-${node.id}`} {...node} delay={dynamicDelay} />;
               })}
@@ -357,13 +460,12 @@ const Main = () => {
         onNodeDoubleClick={handleNodeClick} 
         onAutoExplore={handleAutoExplore} 
         isAutoExploring={isAutoExploring} 
+        isRestored={isRestored}
       />
 
-      <Dashboard selectedNode={selectedNode} dashboardPos={dashboardPos} onClose={handleCloseDashboard} />
+      <Dashboard selectedNode={selectedNode} dashboardPos={dashboardPos} onClose={handleCloseDashboard} isRestored={isRestored} />
 
       <MiniMap viewport={viewport} setViewport={setViewport} activeIds={activeIds} />
-
-      <CustomCursor focusedNodeId={focusedNodeId} isAutoExploring={isAutoExploring} />
     </>
   );
 };

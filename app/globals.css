@@ -259,3 +259,10 @@ html, body, * {
 .has-tooltip:hover .tooltip-bottom-right {
   transform: translateY(8px);
 }
+
+/* 복원 시 애니메이션 제거 유틸리티 */
+.no-animation, .no-animation * {
+  animation: none !important;
+  transition: none !important;
+}
+

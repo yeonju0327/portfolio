@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { MapData } from './data';
 import { CustomScrollContainer } from './CustomScrollContainer';
 
@@ -6,13 +7,17 @@ interface DashboardProps {
   selectedNode: MapData[string] | null;
   dashboardPos: 'left' | 'right' | 'top' | null;
   onClose: () => void;
+  isRestored?: boolean;
 }
 
 const RULED_LINES_TEXTURE = `repeating-linear-gradient(transparent 0px, transparent 32px, rgba(160, 155, 125, 0.3) 32px, rgba(160, 155, 125, 0.3) 34px)`;
 
 const tagColors = ['#FFF9C4', '#F1F8E9', '#E0F7FA', '#F3E5F5', '#FFE0B2', '#FFCDD2'];
 
-const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClose }) => {
+const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClose, isRestored }) => {
+  // 마운트 시점의 복원 여부를 로컬 상태로 굳혀서 리렌더링에 의한 애니메이션 재실행 방지
+  const [initialIsRestored] = React.useState(isRestored ?? false);
+
   // ✨ [성능 최적화 #13] isPolaroidHovered, isBtnHovered React state 제거
   // hover 시마다 Dashboard 전체 리렌더링이 발생하던 원인 제거
   // onMouseEnter/Leave에서 e.currentTarget.style 직접 조작으로 대체
@@ -34,7 +39,7 @@ const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClo
         style={{
           position: 'fixed', top: '24px', right: '24px', bottom: '24px', width: '460px',
           zIndex: 2000, display: 'flex', flexDirection: 'column',
-          animation: 'memoSlideIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+          animation: initialIsRestored ? 'none' : 'memoSlideIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
           pointerEvents: 'none' 
         }}
       >
@@ -248,60 +253,76 @@ const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClo
           </CustomScrollContainer>
 
           {/* 4. 찢어진 영수증 스타일의 프로젝트 바로가기 버튼 */}
-          {selectedNode.linkUrl && (
-            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', pointerEvents: 'auto', transform: 'rotate(-0.5deg)' }}>
-              <a 
-                href={selectedNode.linkUrl} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                style={{ textDecoration: 'none', display: 'block', width: '100%' }}
+          {selectedNode.linkUrl && (() => {
+            const isExternal = selectedNode.linkUrl.startsWith('http://') || selectedNode.linkUrl.startsWith('https://');
+            const buttonContent = (
+              <button 
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.transform = 'rotate(-1.5deg) translateY(-2px)';
+                  el.style.boxShadow = '0 10px 22px rgba(0, 0, 0, 0.12)';
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.transform = 'rotate(1deg)';
+                  el.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.08), inset 0 0 10px rgba(0, 0, 0, 0.02)';
+                }}
+                style={{
+                  position: 'relative',
+                  background: '#ffffff',
+                  color: '#2C2C2C',
+                  fontSize: '1.8rem',
+                  padding: '16px 28px 20px 28px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  fontFamily: "'Nanum Pen Script', cursive",
+                  boxShadow: '0 6px 16px rgba(0, 0, 0, 0.08), inset 0 0 10px rgba(0, 0, 0, 0.02)',
+                  clipPath: 'polygon(0% 0%, 100% 0%, 100% 90%, 95% 100%, 90% 90%, 85% 100%, 80% 90%, 75% 100%, 70% 90%, 65% 100%, 60% 90%, 55% 100%, 50% 90%, 45% 100%, 40% 90%, 35% 100%, 30% 90%, 25% 100%, 20% 90%, 15% 100%, 10% 90%, 5% 100%, 0% 90%)',
+                  transform: 'rotate(1deg)',
+                  transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '12px',
+                  width: '100%'
+                }}
               >
-                <button 
-                  onMouseEnter={(e) => {
-                    const el = e.currentTarget as HTMLElement;
-                    el.style.transform = 'rotate(-1.5deg) translateY(-2px)';
-                    el.style.boxShadow = '0 10px 22px rgba(0, 0, 0, 0.12)';
-                  }}
-                  onMouseLeave={(e) => {
-                    const el = e.currentTarget as HTMLElement;
-                    el.style.transform = 'rotate(1deg)';
-                    el.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.08), inset 0 0 10px rgba(0, 0, 0, 0.02)';
-                  }}
-                  style={{
-                    position: 'relative',
-                    background: '#ffffff',
-                    color: '#2C2C2C',
-                    fontSize: '1.8rem',
-                    padding: '16px 28px 20px 28px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    fontFamily: "'Nanum Pen Script', cursive",
-                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.08), inset 0 0 10px rgba(0, 0, 0, 0.02)',
-                    clipPath: 'polygon(0% 0%, 100% 0%, 100% 90%, 95% 100%, 90% 90%, 85% 100%, 80% 90%, 75% 100%, 70% 90%, 65% 100%, 60% 90%, 55% 100%, 50% 90%, 45% 100%, 40% 90%, 35% 100%, 30% 90%, 25% 100%, 20% 90%, 15% 100%, 10% 90%, 5% 100%, 0% 90%)',
-                    transform: 'rotate(1deg)',
-                    transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '12px',
-                    width: '100%'
-                  }}
+                <span>프로젝트 상세보기</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ transition: 'transform 0.3s' }}
+                  onMouseEnter={(e) => { (e.currentTarget as SVGSVGElement).style.transform = 'scale(1.1) rotate(5deg)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as SVGSVGElement).style.transform = 'none'; }}
                 >
-                  <span>프로젝트 상세보기</span>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                    style={{ transition: 'transform 0.3s' }}
-                    onMouseEnter={(e) => { (e.currentTarget as SVGSVGElement).style.transform = 'scale(1.1) rotate(5deg)'; }}
-                    onMouseLeave={(e) => { (e.currentTarget as SVGSVGElement).style.transform = 'none'; }}
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+              </button>
+            );
+
+            return (
+              <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', pointerEvents: 'auto', transform: 'rotate(-0.5deg)' }}>
+                {isExternal ? (
+                  <a 
+                    href={selectedNode.linkUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    style={{ textDecoration: 'none', display: 'block', width: '100%' }}
                   >
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                    <polyline points="15 3 21 3 21 9"></polyline>
-                    <line x1="10" y1="14" x2="21" y2="3"></line>
-                  </svg>
-                </button>
-              </a>
-            </div>
-          )}
+                    {buttonContent}
+                  </a>
+                ) : (
+                  <Link 
+                    href={selectedNode.linkUrl} 
+                    style={{ textDecoration: 'none', display: 'block', width: '100%' }}
+                  >
+                    {buttonContent}
+                  </Link>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
       {/* ✨ style 태그 제거: memoSlideIn, 스크롤바 스타일은 globals.css로 이전 */}

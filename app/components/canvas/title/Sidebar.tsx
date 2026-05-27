@@ -10,15 +10,37 @@ interface SidebarProps {
   onNodeDoubleClick: (nodeId: string) => void; 
   onAutoExplore: () => void; 
   isAutoExploring: boolean; 
+  isRestored?: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = (props) => {
-  const { isAutoExploring, onAutoExplore } = props;
-  const [isOpen, setIsOpen] = useState(false);
+  const { isAutoExploring, onAutoExplore, isRestored } = props;
+  const [isOpen, setIsOpen] = useState(() => {
+    if (typeof window !== 'undefined' && props.isRestored) {
+      return sessionStorage.getItem('portfolio_sidebar_open') === 'true';
+    }
+    return false;
+  });
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({ root: true });
   const [isHeadMounted, setIsHeadMounted] = useState(false);
+  const [disableAnimation, setDisableAnimation] = useState(props.isRestored ?? false);
+
+  useEffect(() => {
+    if (disableAnimation) {
+      const timer = setTimeout(() => {
+        setDisableAnimation(false);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [disableAnimation]);
   
   const [isMovementShieldActive, setIsMovementShieldActive] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('portfolio_sidebar_open', isOpen.toString());
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const headTimer = setTimeout(() => {
@@ -59,7 +81,7 @@ const Sidebar: React.FC<SidebarProps> = (props) => {
   return (
     <>
       <div
-        className="sidebar-container"
+        className={`sidebar-container ${disableAnimation ? 'no-animation' : ''}`}
         style={{
           position: 'fixed',
           top: '24px', 
@@ -86,7 +108,7 @@ const Sidebar: React.FC<SidebarProps> = (props) => {
           
           // ✨ 2. 투명도 무시 그림자 문제 해결 (box-shadow 완전 제거 -> filter: drop-shadow 사용)
           // 이미지의 불투명한 픽셀(나무 테두리) 모양을 그대로 따라가는 진짜 그림자 생성
-          filter: isOpen ? 'drop-shadow(14px 14px 20px rgba(0,0,0,0.5))' : 'drop-shadow(0px 0px 0px rgba(0,0,0,0))',
+          filter: disableAnimation ? 'none' : (isOpen ? 'drop-shadow(14px 14px 20px rgba(0,0,0,0.5))' : 'drop-shadow(0px 0px 0px rgba(0,0,0,0))'),
           boxShadow: 'none', 
         }}
       >

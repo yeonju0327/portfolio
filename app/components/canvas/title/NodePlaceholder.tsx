@@ -12,10 +12,11 @@ interface NodePlaceholderProps {
   isFading?: boolean; 
   isDraggingActive?: boolean; 
   isAutoExploring?: boolean; 
+  isRestored?: boolean;
 }
 
 const NodePlaceholder: React.FC<NodePlaceholderProps> = ({ 
-  x, y, color, iconType, targetDelay, onClick, isFading, isDraggingActive, isAutoExploring 
+  x, y, color, iconType, targetDelay, onClick, isFading, isDraggingActive, isAutoExploring, isRestored = false 
 }) => {
   const groupRef = useRef<import('konva/lib/Group').Group>(null);
   const dashedRingRef = useRef<import('konva/lib/shapes/Circle').Circle>(null);
@@ -38,36 +39,44 @@ const NodePlaceholder: React.FC<NodePlaceholderProps> = ({
 
   useEffect(() => {
     if (groupRef.current && dashedRingRef.current && glowRef.current) {
-      // ✨ 해결: 초기 렌더링 시 하드코딩되었던 1.8초를 targetDelay(부모의 딜레이가 가산된 시간)로 변경하여 동기화
-      gsap.fromTo(groupRef.current, 
-        { scaleX: 0, scaleY: 0, opacity: 0 }, 
-        { 
-          scaleX: 1, scaleY: 1, opacity: 1, duration: 1, delay: targetDelay, ease: "back.out(1.5)",
-          onComplete: () => { setIsReady(true); } 
-        }
-      );
+      if (isRestored) {
+        gsap.set(groupRef.current, { scaleX: 1, scaleY: 1, opacity: 1 });
+        setIsReady(true);
+      } else {
+        // ✨ 해결: 초기 렌더링 시 하드코딩되었던 1.8초를 targetDelay(부모의 딜레이가 가산된 시간)로 변경하여 동기화
+        gsap.fromTo(groupRef.current, 
+          { scaleX: 0, scaleY: 0, opacity: 0 }, 
+          { 
+            scaleX: 1, scaleY: 1, opacity: 1, duration: 1, delay: targetDelay, ease: "back.out(1.5)",
+            onComplete: () => { setIsReady(true); } 
+          }
+        );
+      }
 
       gsap.to(dashedRingRef.current, { rotation: 360, duration: 15, repeat: -1, ease: "none" });
       gsap.to(glowRef.current, { scaleX: 1.15, scaleY: 1.15, opacity: 0.35, duration: 1.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
     }
-  }, [targetDelay]);
+  }, [targetDelay, isRestored]);
 
   useEffect(() => {
-    if (isFading && !isFadingRef.current && groupRef.current) {
-      isFadingRef.current = true;
-      
-      const fadeOutDelay = (targetDelay + 0.8) + 0.55;
-
-      gsap.to(groupRef.current, {
-        opacity: 0, 
-        scaleX: 1.1, 
-        scaleY: 1.1, 
-        duration: 0.6, 
-        delay: fadeOutDelay, 
-        ease: "power2.inOut",
-      });
+    if (isFading && groupRef.current) {
+      if (isRestored) {
+        gsap.set(groupRef.current, { opacity: 0, scaleX: 1.1, scaleY: 1.1 });
+        isFadingRef.current = true;
+      } else if (!isFadingRef.current) {
+        isFadingRef.current = true;
+        const fadeOutDelay = (targetDelay + 0.8) + 0.55;
+        gsap.to(groupRef.current, {
+          opacity: 0, 
+          scaleX: 1.1, 
+          scaleY: 1.1, 
+          duration: 0.6, 
+          delay: fadeOutDelay, 
+          ease: "power2.inOut",
+        });
+      }
     }
-  }, [isFading, targetDelay]);
+  }, [isFading, targetDelay, isRestored]);
 
   const handleSafeClick = (e: any) => {
     if (!isReady || disableInteraction || isFading || isFadingRef.current) {

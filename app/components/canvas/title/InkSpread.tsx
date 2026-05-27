@@ -13,15 +13,16 @@ interface ExtendedProps extends NodeProps {
   isDraggingActive?: boolean;
   isAutoExploring?: boolean; 
   isSelected?: boolean;
+  isRestored?: boolean;
 }
 
 const InkSpread: React.FC<ExtendedProps> = React.memo(
-  ({ id, x, y, color = "#000000", size = 85, stageSize, img = "/images/node-image.jpg", delay = 0, icon = "plus", caption, onNodeClick, isDraggingActive, isAutoExploring, isSelected }) => {
+  ({ id, x, y, color = "#000000", size = 85, stageSize, img = "/images/node-image.jpg", delay = 0, icon = "plus", caption, onNodeClick, isDraggingActive, isAutoExploring, isSelected, isRestored = false }) => {
     
     const disableInteraction = isDraggingActive || isAutoExploring;
     
     // ✨ useInkAnimation 훅은 Main에서 즉시 전달받은 isSelected를 통해 클릭 직후 강력한 상태 락(Lock)을 가집니다.
-    const { refs, handlers, isReadyRef, ICON_SCALE, rgb } = useInkAnimation(id, color, size, delay, disableInteraction, isSelected);
+    const { refs, handlers, isReadyRef, ICON_SCALE, rgb } = useInkAnimation(id, color, size, delay, disableInteraction, isSelected, isRestored);
     const [image] = useImage(img);
 
     const CLIP_RADIUS = size - 5;

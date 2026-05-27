@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { gsap } from "gsap";
 import Konva from "konva";
 
-export const useInkAnimation = (id: string, color: string, size: number, delay: number, isDraggingActive?: boolean, isSelected?: boolean) => {
+export const useInkAnimation = (id: string, color: string, size: number, delay: number, isDraggingActive?: boolean, isSelected?: boolean, isRestored?: boolean) => {
   const mainGroupRef = useRef<import("konva/lib/Group").Group>(null);
   const inkSpreadRef = useRef<import("konva/lib/shapes/Ring").Ring>(null);
   const imageRef = useRef<import("konva/lib/shapes/Image").Image>(null);
@@ -145,6 +145,23 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
   }, [isDraggingActive, updateHoverState]);
 
   useEffect(() => {
+    if (isRestored) {
+      gsap.set(mainGroupRef.current, { scaleX: 1, scaleY: 1, opacity: 1 });
+      gsap.set(inkSpreadRef.current, { innerRadius: 0, outerRadius: size });
+      gsap.set(imageRef.current, { opacity: 0 });
+      gsap.set(iconRef.current, { opacity: 0.35, scaleX: ICON_SCALE, scaleY: ICON_SCALE }); 
+      if (captionRef.current) gsap.set(captionRef.current, { opacity: 0, y: size + 10 });
+      
+      mainProgressRef.current.scale = 1;
+      isReadyRef.current = true;
+      applyCurrentValues(true);
+
+      if (isNodeClickedRef.current) {
+        updateHoverState('full');
+      }
+      return;
+    }
+
     gsap.set(mainGroupRef.current, { scaleX: 0, scaleY: 0, opacity: 0 });
     gsap.set(inkSpreadRef.current, { innerRadius: 0, outerRadius: size });
     gsap.set(imageRef.current, { opacity: 0 });
@@ -178,7 +195,7 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
     }, 0.8);
     
     return () => { tl.kill(); };
-  }, [size, delay, ICON_SCALE, updateHoverState, updateGradient, applyCurrentValues]);
+  }, [size, delay, ICON_SCALE, updateHoverState, updateGradient, applyCurrentValues, isRestored]);
 
   const onEnterProximate = useCallback(() => { isMouseOverRef.current = true; updateHoverState('proximate'); }, [updateHoverState]);
   const onLeaveProximate = useCallback(() => { isMouseOverRef.current = false; updateHoverState('none'); }, [updateHoverState]);

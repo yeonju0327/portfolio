@@ -3,22 +3,15 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { gsap } from 'gsap';
 
-interface CustomCursorProps {
-  focusedNodeId: string | null;
-  isAutoExploring: boolean;
-}
-
-const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExploring }) => {
+const CustomCursor: React.FC = () => {
   const cursorRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   
   const isPausedRef = useRef(false);
 
   const [cursorState, setCursorState] = useState<'default' | 'proximate' | 'full'>('default');
-  // ✨ [성능 최적화 #5] 이전 커서 상태를 기억하여 동일 상태에서의 setCursorState + gsap.to 중복 호출 방지
   const prevCursorStateRef = useRef<'default' | 'proximate' | 'full'>('default');
 
-  // ✨ 마우스 물리 좌표를 추적하여 담아둘 Ref
   const mousePos = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -28,7 +21,6 @@ const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExplor
     const ySet = gsap.quickSetter(cursorRef.current, 'y', 'px');
 
     const handleMouseMove = (e: MouseEvent) => {
-      // 마우스가 움직이면 즉시 좌표값을 동기화하여 0프레임 딜레이를 실현합니다.
       mousePos.current.x = e.clientX;
       mousePos.current.y = e.clientY;
       xSet(e.clientX);
@@ -42,21 +34,11 @@ const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExplor
     };
   }, []);
 
-  // 기존 호버, 오토익스플로어, 클릭 애니메이션 로직 100% 원상 복구
-  useEffect(() => {
-    isPausedRef.current = isAutoExploring;
-    if (isAutoExploring) {
-      setCursorState('default');
-      gsap.to(imageRef.current, { scale: 1, rotate: 0, opacity: 0.5, duration: 0.3, ease: 'power3.out' });
-    } else {
-      gsap.to(imageRef.current, { opacity: 1, duration: 0.2 });
-    }
-  }, [isAutoExploring]);
-
   const updateCursorState = useCallback((targetElement: HTMLElement | null) => {
     if (isPausedRef.current) return;
 
     const bodyCursor = document.body.getAttribute('data-cursor');
+    const focusedNode = document.body.getAttribute('data-focused-node');
     
     let hasPointer = false;
     let hasProximate = false;
@@ -67,7 +49,7 @@ const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExplor
     }
 
     const newState: 'default' | 'proximate' | 'full' =
-      (hasPointer || bodyCursor === 'pointer' || focusedNodeId) ? 'full'
+      (hasPointer || bodyCursor === 'pointer' || focusedNode) ? 'full'
       : (hasProximate || bodyCursor === 'proximate') ? 'proximate'
       : 'default';
 
@@ -83,7 +65,46 @@ const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExplor
     } else {
       gsap.to(imageRef.current, { scale: 1, rotate: 0, duration: 0.3, ease: 'power3.out' });
     }
-  }, [focusedNodeId]);
+  }, []);
+
+  // auto-exploring 및 focused-node 상태 변화 감지를 위한 MutationObserver
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const updateFromDOM = () => {
+      const isAuto = document.body.getAttribute('data-auto-exploring') === 'true';
+      isPausedRef.current = isAuto;
+      if (isAuto) {
+        setCursorState('default');
+        gsap.to(imageRef.current, { scale: 1, rotate: 0, opacity: 0.5, duration: 0.3, ease: 'power3.out' });
+      } else {
+        gsap.to(imageRef.current, { opacity: 1, duration: 0.2 });
+        // auto exploring이 풀렸을 때 현재 마우스 밑의 요소 기준으로 커서 갱신
+        const currentEl = document.elementFromPoint(mousePos.current.x, mousePos.current.y) as HTMLElement | null;
+        updateCursorState(currentEl);
+      }
+    };
+
+    updateFromDOM(); // 초기 동기화
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes') {
+          if (mutation.attributeName === 'data-auto-exploring') {
+            updateFromDOM();
+          }
+          if (mutation.attributeName === 'data-focused-node') {
+            const currentEl = document.elementFromPoint(mousePos.current.x, mousePos.current.y) as HTMLElement | null;
+            updateCursorState(currentEl);
+          }
+        }
+      });
+    });
+
+    observer.observe(document.body, { attributes: true });
+
+    return () => observer.disconnect();
+  }, [updateCursorState]);
 
   useEffect(() => {
     const handleMouseStateChange = (e: MouseEvent) => {
@@ -91,13 +112,9 @@ const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExplor
     };
 
     window.addEventListener('mouseover', handleMouseStateChange);
-    
-    // focusedNodeId가 변경될 때 마우스 아래의 요소를 찾아 상태를 즉시 강제 업데이트
-    const currentEl = document.elementFromPoint(mousePos.current.x, mousePos.current.y) as HTMLElement | null;
-    updateCursorState(currentEl);
 
     return () => window.removeEventListener('mouseover', handleMouseStateChange);
-  }, [focusedNodeId, updateCursorState]);
+  }, [updateCursorState]);
 
   useEffect(() => {
     const handleMouseDown = () => {
@@ -123,40 +140,35 @@ const CustomCursor: React.FC<CustomCursorProps> = ({ focusedNodeId, isAutoExplor
   }, [cursorState]);
 
   return (
-    <>
-      {/* ✨ cursor: none 스타일은 globals.css로 이전 (inline style 태그 제거) */}
-      
-      <div
-        ref={cursorRef}
+    <div
+      ref={cursorRef}
+      style={{
+        position: 'fixed',
+        top: '-32px', 
+        left: '0px',
+        width: '32px',
+        height: '32px',
+        pointerEvents: 'none',
+        zIndex: 99999,
+        willChange: 'transform',
+      }}
+    >
+      <img
+        ref={imageRef}
+        src="/cursor.png" 
+        alt="custom pen cursor"
         style={{
-          position: 'fixed',
-          top: '-32px', 
-          left: '0px',
-          width: '32px',
-          height: '32px',
-          pointerEvents: 'none',
-          zIndex: 99999,
-          willChange: 'transform', 
-          opacity: isAutoExploring ? 0.5 : 1,
-        }}
-      >
-        <img
-          ref={imageRef}
-          src="/cursor.png" 
-          alt="custom pen cursor"
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'block',
-            transformOrigin: '0% 100%',
-            transition: 'opacity 0.3s',
-            imageRendering: 'pixelated' as React.CSSProperties['imageRendering'],
-            userSelect: 'none',
-            WebkitUserDrag: 'none'
-          } as React.CSSProperties}
-        />
-      </div>
-    </>
+          width: '100%',
+          height: '100%',
+          display: 'block',
+          transformOrigin: '0% 100%',
+          transition: 'opacity 0.3s',
+          imageRendering: 'pixelated' as React.CSSProperties['imageRendering'],
+          userSelect: 'none',
+          WebkitUserDrag: 'none'
+        } as React.CSSProperties}
+      />
+    </div>
   );
 };
 

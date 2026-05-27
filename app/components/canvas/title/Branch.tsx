@@ -11,7 +11,7 @@ const getRGBA = (hex: string, alpha: number): string => {
   return `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
 };
 
-const Branch: React.FC<BranchProps> = React.memo(({ startX, startY, endX, endY, startColor, endColor, delay = 0 }) => {
+const Branch: React.FC<BranchProps> = React.memo(({ startX, startY, endX, endY, startColor, endColor, delay = 0, isRestored = false }) => {
   const lineRef = useRef<Konva.Line>(null);
 
 
@@ -48,6 +48,11 @@ const Branch: React.FC<BranchProps> = React.memo(({ startX, startY, endX, endY, 
 
   useEffect(() => {
     if (roughLength > 0 && lineRef.current) {
+      if (isRestored) {
+        gsap.set(lineRef.current, { opacity: 0.8, dashOffset: 0 });
+        return;
+      }
+
       const tl = gsap.timeline({ delay });
       tl.set(lineRef.current, { opacity: 0.8 }); 
       
@@ -63,7 +68,7 @@ const Branch: React.FC<BranchProps> = React.memo(({ startX, startY, endX, endY, 
       
       return () => { tl.kill(); };
     }
-  }, [roughLength, delay]);
+  }, [roughLength, delay, isRestored]);
 
   return (
     <Group listening={false}>

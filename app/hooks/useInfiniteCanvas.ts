@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { gsap } from 'gsap';
 
-export const useInfiniteCanvas = (virtualSize: number) => {
+export const useInfiniteCanvas = (virtualSize: number, isRestored = false) => {
   const [viewport, setViewport] = useState({ x: 0, y: 0, scale: 1 });
   const [isReady, setIsReady] = useState(false);
   const [isDraggingActive, setIsDraggingActive] = useState(false);
@@ -47,13 +47,32 @@ export const useInfiniteCanvas = (virtualSize: number) => {
       duration,
       ease: "power3.inOut",
       onUpdate: () => {
-        setViewport({ ...viewportRef.current });
+        setViewport({
+          x: viewportRef.current.x,
+          y: viewportRef.current.y,
+          scale: viewportRef.current.scale
+        });
       }
     });
   }, [clampPosition]); // ✨ viewport 의존성 제거!
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    // SessionStorage에서 이전 뷰포트 정보 로드 시도 (상세 복귀 시에만)
+    const saved = sessionStorage.getItem('portfolio_viewport');
+    if (saved && isRestored) {
+      try {
+        const parsed = JSON.parse(saved);
+        viewportRef.current = parsed;
+        setViewport(parsed);
+        setIsReady(true);
+        return;
+      } catch (e) {
+        console.error('Failed to load viewport state from sessionStorage:', e);
+      }
+    }
+
     const w = window.innerWidth;
     const h = window.innerHeight;
     const minScale = Math.max(w / virtualSize, h / virtualSize);
@@ -66,6 +85,17 @@ export const useInfiniteCanvas = (virtualSize: number) => {
     setViewport(initial);
     setIsReady(true);
   }, [virtualSize, clampPosition]);
+
+  // 뷰포트 상태가 변경될 때마다 sessionStorage에 기록
+  useEffect(() => {
+    if (typeof window !== 'undefined' && isReady) {
+      sessionStorage.setItem('portfolio_viewport', JSON.stringify({
+        x: viewport.x,
+        y: viewport.y,
+        scale: viewport.scale
+      }));
+    }
+  }, [viewport, isReady]);
 
   const handleWheel = useCallback((e: WheelEvent) => {
     const target = e.target as HTMLElement | null;
@@ -113,7 +143,7 @@ export const useInfiniteCanvas = (virtualSize: number) => {
       }
       setViewport(prev => {
         const clamped = clampPosition(prev.x + dx, prev.y + dy, prev.scale);
-        const next = { ...prev, x: clamped.x, y: clamped.y };
+        const next = { x: clamped.x, y: clamped.y, scale: prev.scale };
         viewportRef.current = next; // ref도 동기화
         return next;
       });
