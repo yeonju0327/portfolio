@@ -8,13 +8,12 @@ interface SidebarProps {
   onExpandNode: (parentId: string | null, childId: string, customDelay?: number) => void;
   onMoveCameraOnly: (nodeId: string) => void;
   onNodeDoubleClick: (nodeId: string) => void; 
-  onAutoExplore: () => void; 
   isAutoExploring: boolean; 
   isRestored?: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = (props) => {
-  const { isAutoExploring, onAutoExplore, isRestored } = props;
+  const { isAutoExploring, isRestored } = props;
   const [isOpen, setIsOpen] = useState(() => {
     if (typeof window !== 'undefined' && props.isRestored) {
       return sessionStorage.getItem('portfolio_sidebar_open') === 'true';
@@ -33,6 +32,13 @@ const Sidebar: React.FC<SidebarProps> = (props) => {
       return () => clearTimeout(timer);
     }
   }, [disableAnimation]);
+
+  // 자동 탐색 개시 시 사이드바 자동 닫힘 반응형 연동
+  useEffect(() => {
+    if (isAutoExploring) {
+      setIsOpen(false);
+    }
+  }, [isAutoExploring]);
   
   const [isMovementShieldActive, setIsMovementShieldActive] = useState(false);
 
@@ -70,12 +76,6 @@ const Sidebar: React.FC<SidebarProps> = (props) => {
   const handleCollapseAll = () => {
     if (isAutoExploring) return;
     setExpandedNodes({});
-  };
-
-  const handleTriggerAutoExplore = () => {
-    if (isAutoExploring) return;
-    setIsOpen(false);
-    onAutoExplore();
   };
 
   return (
@@ -169,13 +169,6 @@ const Sidebar: React.FC<SidebarProps> = (props) => {
                 <polyline points="7 18 12 13 17 18"></polyline>
               </svg>
               <span className="custom-tooltip-text tooltip-bottom">모든 탭 닫기</span>
-            </button>
-            <div style={{ width: '2px', backgroundColor: 'rgba(255,255,255,0.2)', margin: '0 6px' }} />
-            <button className="icon-btn has-tooltip" onClick={handleTriggerAutoExplore}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="5 3 19 12 5 21 5 3"></polygon>
-              </svg>
-              <span className="custom-tooltip-text tooltip-bottom-right">지도 자동 탐색</span>
             </button>
           </div>
 

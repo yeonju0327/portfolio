@@ -6,13 +6,16 @@ interface MiniMapProps {
   viewport: { x: number; y: number; scale: number };
   setViewport: React.Dispatch<React.SetStateAction<{ x: number; y: number; scale: number }>>;
   activeIds: string[];
+  links: { source: string; target: string; delay?: number }[];
+  isAutoExploring: boolean;
+  onAutoExplore: () => void;
 }
 
 const VIRTUAL_SIZE = 4000;
 const MAP_SIZE = 240; // 미니맵 크기 대폭 확장 (180px -> 240px)
 
 // ✨ [성능 최적화 #7] React.memo 적용 → viewport외 prop 변경 시에만 재렌더링
-export const MiniMap: React.FC<MiniMapProps> = React.memo(({ viewport, setViewport, activeIds }) => {
+export const MiniMap: React.FC<MiniMapProps> = React.memo(({ viewport, setViewport, activeIds, links, isAutoExploring, onAutoExplore }) => {
   const [windowSize, setWindowSize] = useState({ w: 1200, h: 800 });
   const mapRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
@@ -195,64 +198,120 @@ export const MiniMap: React.FC<MiniMapProps> = React.memo(({ viewport, setViewpo
         display: 'flex', 
         flexDirection: 'column', 
         alignItems: 'flex-end',
-        gap: '30px', // 복귀 포스트잇 버튼과의 겹침 차단을 위한 넉넉한 세로 마진
-        fontFamily: "'Nanum Pen Script', cursive"
+        gap: '8px', // 미니맵 바로 위에 착 붙도록 세로 gap 축소
+        fontFamily: "'Nanum Pen Script', cursive",
+        
+        // 자동 탐색 시 미니맵 조작 UI 전체 페이드아웃 적용
+        opacity: isAutoExploring ? 0 : 1,
+        pointerEvents: isAutoExploring ? 'none' : 'auto',
+        visibility: isAutoExploring ? 'hidden' : 'visible',
+        transition: 'opacity 0.5s ease-in-out, visibility 0.5s ease-in-out'
       }}
     >
-      {/* 🧭 노란색 포스트잇 스타일의 홈 복귀 버튼 (점착식 메타포에 따라 부가적인 테이프 삭제) */}
-      <button
-        onClick={handleResetToCenter}
-        onMouseEnter={(e) => {
-          const el = e.currentTarget as HTMLButtonElement;
-          el.style.transform = 'rotate(2deg) translateY(-2px) scale(1.05)';
-          el.style.boxShadow = '2px 8px 14px rgba(0,0,0,0.18), 0 2px 4px rgba(0,0,0,0.08)';
-        }}
-        onMouseLeave={(e) => {
-          const el = e.currentTarget as HTMLButtonElement;
-          el.style.transform = 'rotate(-3deg) translateY(0) scale(1)';
-          el.style.boxShadow = '1px 3px 6px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.05)';
-        }}
-        className="has-tooltip"
-        style={{
-          width: '56px',
-          height: '56px',
-          backgroundColor: '#FFF59D',
-          border: 'none',
-          boxShadow: '1px 3px 6px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.05)',
-          cursor: 'pointer',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '8px 0 2px 0',
-          position: 'relative',
-          transform: 'rotate(-3deg) translateY(0) scale(1)',
-          transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s, background-color 0.2s',
-          outline: 'none',
-          borderRadius: '1px'
-        }}
-      >
-        {/* 손드로잉 느낌의 집 아이콘 */}
-        <svg 
-          width="22" 
-          height="22" 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="#4E342E" // 따뜻한 연필톤 브라운 테두리
-          strokeWidth="2.5" 
-          strokeLinecap="round" 
-          strokeLinejoin="round"
-          style={{ marginBottom: '2px' }}
-        >
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-          <polyline points="9 22 9 12 15 12 15 22"></polyline>
-        </svg>
-        
-        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#5D4037', letterSpacing: '0.5px', lineHeight: 1 }}>
-          HOME
-        </span>
-        <span className="custom-tooltip-text tooltip-left">중앙으로 돌아가기</span>
-      </button>
+      {/* 홈 복귀 및 자동 탐색 가로 컨트롤러 */}
+      <div style={{ display: 'flex', gap: '16px', transform: 'rotate(-1deg)', alignSelf: 'flex-end' }}>
+        {/* 🧭 노란색 포스트잇 스타일의 홈 복귀 버튼 */}
+        <div className="has-tooltip" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', position: 'relative' }}>
+          <button
+            onClick={handleResetToCenter}
+            onMouseEnter={(e) => {
+              const el = e.currentTarget as HTMLButtonElement;
+              el.style.transform = 'rotate(2deg) translateY(-2px) scale(1.05)';
+              el.style.boxShadow = '2px 8px 14px rgba(0,0,0,0.18), 0 2px 4px rgba(0,0,0,0.08)';
+            }}
+            onMouseLeave={(e) => {
+              const el = e.currentTarget as HTMLButtonElement;
+              el.style.transform = 'rotate(-3deg) translateY(0) scale(1)';
+              el.style.boxShadow = '1px 3px 6px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.05)';
+            }}
+            style={{
+              width: '56px',
+              height: '56px',
+              backgroundColor: '#FFF59D',
+              border: 'none',
+              boxShadow: '1px 3px 6px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.05)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              transform: 'rotate(-3deg) translateY(0) scale(1)',
+              transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s, background-color 0.2s',
+              outline: 'none',
+              borderRadius: '1px'
+            }}
+          >
+            {/* 손드로잉 느낌의 집 아이콘 */}
+            <svg 
+              width="24" 
+              height="24" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="#4E342E" // 따뜻한 연필톤 브라운 테두리
+              strokeWidth="2.5" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            >
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+          </button>
+          
+          <span className="custom-tooltip-text tooltip-top">중앙으로 돌아가기</span>
+        </div>
+
+        {/* 🚀 연분홍색 포스트잇 스타일의 자동 탐색 버튼 */}
+        <div className="has-tooltip" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', position: 'relative' }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAutoExplore();
+            }}
+            onMouseEnter={(e) => {
+              const el = e.currentTarget as HTMLButtonElement;
+              el.style.transform = 'rotate(-1deg) translateY(-2px) scale(1.05)';
+              el.style.boxShadow = '2px 8px 14px rgba(0,0,0,0.18), 0 2px 4px rgba(0,0,0,0.08)';
+            }}
+            onMouseLeave={(e) => {
+              const el = e.currentTarget as HTMLButtonElement;
+              el.style.transform = 'rotate(3deg) translateY(0) scale(1)';
+              el.style.boxShadow = '1px 3px 6px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.05)';
+            }}
+            style={{
+              width: '56px',
+              height: '56px',
+              backgroundColor: '#FFCDD2', // 옅은 핑크색 포스트잇
+              border: 'none',
+              boxShadow: '1px 3px 6px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.05)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              transform: 'rotate(3deg) translateY(0) scale(1)', // 방향을 엇갈리게 비틀어 생동감 부여
+              transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s, background-color 0.2s',
+              outline: 'none',
+              borderRadius: '1px'
+            }}
+          >
+            {/* 재생 아이콘 */}
+            <svg 
+              width="24" 
+              height="24" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="#4E342E"
+              strokeWidth="2.5" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            >
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+          </button>
+
+          <span className="custom-tooltip-text tooltip-top">지도 자동 탐색</span>
+        </div>
+      </div>
 
       {/* 🗺️ 미니맵 외부 뼈대 (종이 질감 및 테두리 장착) */}
       <div
@@ -300,9 +359,41 @@ export const MiniMap: React.FC<MiniMapProps> = React.memo(({ viewport, setViewpo
               backgroundColor: 'rgba(255,107,107,0.06)',
               pointerEvents: 'none',
               borderRadius: '2px',
-              boxSizing: 'border-box'
+              boxSizing: 'border-box',
+              zIndex: 8
             }}
           />
+
+          {/* 간선(연결선) 그리기 */}
+          <svg
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+              zIndex: 3
+            }}
+          >
+            {links.map((link, idx) => {
+              const s = PORTFOLIO_MAP[link.source];
+              const t = PORTFOLIO_MAP[link.target];
+              if (!s || !t) return null;
+              return (
+                <line
+                  key={`mini-link-${idx}`}
+                  x1={s.x * ratio}
+                  y1={s.y * ratio}
+                  x2={t.x * ratio}
+                  y2={t.y * ratio}
+                  stroke={s.color || '#999999'}
+                  strokeWidth="1"
+                  opacity="0.45"
+                />
+              );
+            })}
+          </svg>
 
           {/* 노드 점들 */}
           {/* ✨ [성능 최적화 #7] nodeDots를 useMemo로 쾐싱

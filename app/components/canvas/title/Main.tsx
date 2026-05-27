@@ -458,14 +458,13 @@ const Main = () => {
         onExpandNode={handleExpandNode} 
         onMoveCameraOnly={handleMoveCameraOnly}
         onNodeDoubleClick={handleNodeClick} 
-        onAutoExplore={handleAutoExplore} 
         isAutoExploring={isAutoExploring} 
         isRestored={isRestored}
       />
 
       <Dashboard selectedNode={selectedNode} dashboardPos={dashboardPos} onClose={handleCloseDashboard} isRestored={isRestored} />
 
-      <MiniMap viewport={viewport} setViewport={setViewport} activeIds={activeIds} />
+      <MiniMap viewport={viewport} setViewport={setViewport} activeIds={activeIds} links={links} isAutoExploring={isAutoExploring} onAutoExplore={handleAutoExplore} />
     </>
   );
 };
