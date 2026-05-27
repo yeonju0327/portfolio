@@ -104,11 +104,7 @@ export const CustomScrollContainer: React.FC<CustomScrollContainerProps> = ({
         }}
         className={`hide-scrollbar ${contentClassName || ''}`}
       >
-        <style dangerouslySetInnerHTML={{__html: `
-          .hide-scrollbar::-webkit-scrollbar {
-            display: none !important;
-          }
-        `}} />
+        {/* ✨ .hide-scrollbar 스타일은 globals.css로 이전됨 (중복 style 태그 제거) */}
         {children}
       </div>
       {thumbHeight > 0 && (

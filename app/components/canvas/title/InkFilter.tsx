@@ -15,6 +15,12 @@ const InkFilter = React.memo(({ id }: { id: string }) => (
       scale="20"
       xChannelSelector="R"
       yChannelSelector="G"
+      result="displaced"
+    />
+    <feGaussianBlur
+      id={`blur-${id}`}
+      in="displaced"
+      stdDeviation="1.2"
     />
   </filter>
 ));

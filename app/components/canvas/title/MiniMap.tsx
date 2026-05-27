@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { gsap } from 'gsap';
 import { PORTFOLIO_MAP, CENTER } from './data';
 
@@ -11,11 +11,12 @@ interface MiniMapProps {
 const VIRTUAL_SIZE = 4000;
 const MAP_SIZE = 240; // 미니맵 크기 대폭 확장 (180px -> 240px)
 
-export const MiniMap: React.FC<MiniMapProps> = ({ viewport, setViewport, activeIds }) => {
+// ✨ [성능 최적화 #7] React.memo 적용 → viewport외 prop 변경 시에만 재렌더링
+export const MiniMap: React.FC<MiniMapProps> = React.memo(({ viewport, setViewport, activeIds }) => {
   const [windowSize, setWindowSize] = useState({ w: 1200, h: 800 });
   const mapRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
-  const [isBtnHovered, setIsBtnHovered] = useState(false);
+  // ✨ [성능 최적화 #7] isBtnHovered React state 제거 → DOM 직접 조작으로 대체
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -201,17 +202,23 @@ export const MiniMap: React.FC<MiniMapProps> = ({ viewport, setViewport, activeI
       {/* 🧭 노란색 포스트잇 스타일의 홈 복귀 버튼 (점착식 메타포에 따라 부가적인 테이프 삭제) */}
       <button
         onClick={handleResetToCenter}
-        onMouseEnter={() => setIsBtnHovered(true)}
-        onMouseLeave={() => setIsBtnHovered(false)}
+        onMouseEnter={(e) => {
+          const el = e.currentTarget as HTMLButtonElement;
+          el.style.transform = 'rotate(2deg) translateY(-2px) scale(1.05)';
+          el.style.boxShadow = '2px 8px 14px rgba(0,0,0,0.18), 0 2px 4px rgba(0,0,0,0.08)';
+        }}
+        onMouseLeave={(e) => {
+          const el = e.currentTarget as HTMLButtonElement;
+          el.style.transform = 'rotate(-3deg) translateY(0) scale(1)';
+          el.style.boxShadow = '1px 3px 6px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.05)';
+        }}
         className="has-tooltip"
         style={{
           width: '56px',
           height: '56px',
-          backgroundColor: '#FFF59D', // 포스트잇 고유의 따스한 연노랑
+          backgroundColor: '#FFF59D',
           border: 'none',
-          boxShadow: isBtnHovered
-            ? '2px 8px 14px rgba(0,0,0,0.18), 0 2px 4px rgba(0,0,0,0.08)'
-            : '1px 3px 6px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.05)',
+          boxShadow: '1px 3px 6px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.05)',
           cursor: 'pointer',
           display: 'flex',
           flexDirection: 'column',
@@ -219,10 +226,10 @@ export const MiniMap: React.FC<MiniMapProps> = ({ viewport, setViewport, activeI
           justifyContent: 'center',
           padding: '8px 0 2px 0',
           position: 'relative',
-          transform: isBtnHovered ? 'rotate(2deg) translateY(-2px) scale(1.05)' : 'rotate(-3deg) translateY(0) scale(1)',
+          transform: 'rotate(-3deg) translateY(0) scale(1)',
           transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s, background-color 0.2s',
           outline: 'none',
-          borderRadius: '1px' // 완벽한 사각형 종이 질감
+          borderRadius: '1px'
         }}
       >
         {/* 손드로잉 느낌의 집 아이콘 */}
@@ -298,13 +305,13 @@ export const MiniMap: React.FC<MiniMapProps> = ({ viewport, setViewport, activeI
           />
 
           {/* 노드 점들 */}
-          {Object.entries(PORTFOLIO_MAP).map(([id, node]) => {
+          {/* ✨ [성능 최적화 #7] nodeDots를 useMemo로 쾐싱
+              노드의 좌표/색상은 불변 → activeIds 변화 시에만 재계산 */}
+          {useMemo(() => Object.entries(PORTFOLIO_MAP).map(([id, node]) => {
             const isActive = activeIds.includes(id);
             const isRoot = id === 'root';
-            
             const nx = node.x * ratio;
             const ny = node.y * ratio;
-            
             return (
               <div
                 key={`mini-node-${id}`}
@@ -324,11 +331,14 @@ export const MiniMap: React.FC<MiniMapProps> = ({ viewport, setViewport, activeI
                 title={node.caption}
               />
             );
-          })}
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+          }), [activeIds])}
         </div>
       </div>
     </div>
   );
-};
+});
+
+MiniMap.displayName = 'MiniMap';
 
 export default MiniMap;

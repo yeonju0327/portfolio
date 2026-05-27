@@ -32,6 +32,16 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* ✨ 커스텀 커서 전역 적용 (CustomCursor.tsx에서 이전) */
+html, body, * {
+  cursor: none !important;
+}
+
+/* ✨ 웹킷 스크롤바 숨김 (CustomScrollContainer.tsx에서 이전) */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none !important;
+}
+
 /* 🎨 아날로그 디자인 추가 클래스 */
 
 /* 1. 폴라로이드 사진 스타일 */
@@ -80,7 +90,6 @@ body {
   outline: none;
   font-family: 'Nanum Pen Script', cursive;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08), inset 0 0 10px rgba(0, 0, 0, 0.02);
-  /* 아래쪽 톱니바퀴 모양 찢어짐 효과 */
   clip-path: polygon(
     0% 0%, 100% 0%, 100% 90%, 
     95% 100%, 90% 90%, 85% 100%, 80% 90%, 75% 100%, 70% 90%, 65% 100%, 60% 90%, 55% 100%, 50% 90%, 45% 100%, 40% 90%, 35% 100%, 30% 90%, 25% 100%, 20% 90%, 15% 100%, 10% 90%, 5% 100%, 0% 90%
@@ -110,7 +119,7 @@ body {
   font-size: 1.25rem;
   color: #333333;
   position: relative;
-  background-color: var(--tag-bg, #FFF9C4); /* 기본값 연노랑 */
+  background-color: var(--tag-bg, #FFF9C4);
   box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.1);
   transform: rotate(var(--tag-rot, -1.5deg));
   border-left: 2px solid rgba(0,0,0,0.15);
@@ -129,11 +138,23 @@ body {
   transform: rotate(45deg);
 }
 
-/* 5. 모바일 반응형 대시보드 애니메이션 및 레이아웃 */
+/* 5. 모바일 반응형 대시보드 애니메이션 */
 @keyframes memoSlideUp {
   0% { transform: translateY(100%) rotate(1deg); opacity: 0; }
   100% { transform: translateY(0) rotate(0deg); opacity: 1; }
 }
+
+/* ✨ Dashboard 슬라이드인 애니메이션 (Dashboard.tsx inline style에서 이전) */
+@keyframes memoSlideIn {
+  0% { transform: translateX(calc(100% + 40px)) rotate(2.5deg); opacity: 0; }
+  100% { transform: translateX(0) rotate(0deg); opacity: 1; }
+}
+
+/* ✨ Dashboard 스크롤바 스타일 (Dashboard.tsx inline style에서 이전) */
+.memo-content-scroll::-webkit-scrollbar { width: 5px; }
+.memo-content-scroll::-webkit-scrollbar-track { background: transparent; }
+.memo-content-scroll::-webkit-scrollbar-thumb { background: rgba(160, 155, 125, 0.4); border-radius: 4px; }
+.memo-content-scroll::-webkit-scrollbar-thumb:hover { background: rgba(160, 155, 125, 0.6); }
 
 @media (max-width: 768px) {
   .paper-dashboard-container {
@@ -149,9 +170,13 @@ body {
   .paper-dashboard-container > div:first-child {
     border-radius: 20px 20px 0 0 !important;
   }
+
+  .mobile-drag-handle {
+    display: block !important;
+  }
 }
 
-/* 툴팁 공용 아날로그 스타일 (둥근 모서리 8px) */
+/* 툴팁 공용 아날로그 스타일 */
 .has-tooltip {
   position: relative;
   display: inline-flex;
@@ -165,7 +190,7 @@ body {
   color: #FDFCF8;
   text-align: center;
   padding: 6px 12px;
-  border-radius: 8px; /* 딱딱함 제거하고 둥글게 */
+  border-radius: 8px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
   font-size: 0.85rem !important;
   font-weight: 600 !important;
@@ -234,6 +259,3 @@ body {
 .has-tooltip:hover .tooltip-bottom-right {
   transform: translateY(8px);
 }
-
-
-

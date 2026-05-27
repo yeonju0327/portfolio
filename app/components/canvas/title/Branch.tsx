@@ -4,15 +4,16 @@ import { gsap } from 'gsap';
 import Konva from 'konva';
 import { BranchProps } from './types';
 
+// ✨ [성능 최적화] 순수 함수이므로 컴포넌트 외부에 정의 → 렌더링마다 재생성 방지
+const getRGBA = (hex: string, alpha: number): string => {
+  const rgb = Konva.Util.getRGB(hex);
+  if (!rgb) return `rgba(0,0,0,${alpha})`;
+  return `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
+};
+
 const Branch: React.FC<BranchProps> = React.memo(({ startX, startY, endX, endY, startColor, endColor, delay = 0 }) => {
   const lineRef = useRef<Konva.Line>(null);
 
-  // 기존 RGBA 변환 로직 유지
-  const getRGBA = (hex: string, alpha: number) => {
-    const rgb = Konva.Util.getRGB(hex);
-    if (!rgb) return `rgba(0,0,0,${alpha})`;
-    return `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
-  };
 
   // ✨ 기존의 지터(Jitter) 포인트 및 길이 계산 로직 100% 유지
   const { roughPoints, roughLength } = useMemo(() => {

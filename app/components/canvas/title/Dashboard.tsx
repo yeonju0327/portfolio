@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { MapData } from './data';
 import { CustomScrollContainer } from './CustomScrollContainer';
 
@@ -13,8 +13,9 @@ const RULED_LINES_TEXTURE = `repeating-linear-gradient(transparent 0px, transpar
 const tagColors = ['#FFF9C4', '#F1F8E9', '#E0F7FA', '#F3E5F5', '#FFE0B2', '#FFCDD2'];
 
 const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClose }) => {
-  const [isPolaroidHovered, setIsPolaroidHovered] = useState(false);
-  const [isBtnHovered, setIsBtnHovered] = useState(false);
+  // ✨ [성능 최적화 #13] isPolaroidHovered, isBtnHovered React state 제거
+  // hover 시마다 Dashboard 전체 리렌더링이 발생하던 원인 제거
+  // onMouseEnter/Leave에서 e.currentTarget.style 직접 조작으로 대체
 
   if (!selectedNode || !dashboardPos) return null;
 
@@ -136,17 +137,23 @@ const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClo
           {selectedNode.img && (
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px', pointerEvents: 'auto' }}>
               <div 
-                onMouseEnter={() => setIsPolaroidHovered(true)}
-                onMouseLeave={() => setIsPolaroidHovered(false)}
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.boxShadow = '0 10px 24px rgba(0, 0, 0, 0.2), 0 3px 6px rgba(0, 0, 0, 0.1)';
+                  el.style.transform = 'rotate(1.5deg) translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.06)';
+                  el.style.transform = 'rotate(-2deg)';
+                }}
                 style={{
                   background: '#ffffff',
                   padding: '10px 10px 24px 10px',
-                  boxShadow: isPolaroidHovered 
-                    ? '0 10px 24px rgba(0, 0, 0, 0.2), 0 3px 6px rgba(0, 0, 0, 0.1)' 
-                    : '0 6px 16px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.06)',
+                  boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.06)',
                   border: '1px solid rgba(0, 0, 0, 0.05)',
                   display: 'inline-block',
-                  transform: isPolaroidHovered ? 'rotate(1.5deg) translateY(-2px)' : 'rotate(-2deg)',
+                  transform: 'rotate(-2deg)',
                   transition: 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s',
                   position: 'relative',
                   cursor: 'pointer'
@@ -250,8 +257,16 @@ const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClo
                 style={{ textDecoration: 'none', display: 'block', width: '100%' }}
               >
                 <button 
-                  onMouseEnter={() => setIsBtnHovered(true)}
-                  onMouseLeave={() => setIsBtnHovered(false)}
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget as HTMLElement;
+                    el.style.transform = 'rotate(-1.5deg) translateY(-2px)';
+                    el.style.boxShadow = '0 10px 22px rgba(0, 0, 0, 0.12)';
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget as HTMLElement;
+                    el.style.transform = 'rotate(1deg)';
+                    el.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.08), inset 0 0 10px rgba(0, 0, 0, 0.02)';
+                  }}
                   style={{
                     position: 'relative',
                     background: '#ffffff',
@@ -262,12 +277,9 @@ const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClo
                     cursor: 'pointer',
                     outline: 'none',
                     fontFamily: "'Nanum Pen Script', cursive",
-                    boxShadow: isBtnHovered 
-                      ? '0 10px 22px rgba(0, 0, 0, 0.12)' 
-                      : '0 6px 16px rgba(0, 0, 0, 0.08), inset 0 0 10px rgba(0, 0, 0, 0.02)',
-                    /* 아래쪽 톱니바퀴 모양 찢어짐 효과 */
+                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.08), inset 0 0 10px rgba(0, 0, 0, 0.02)',
                     clipPath: 'polygon(0% 0%, 100% 0%, 100% 90%, 95% 100%, 90% 90%, 85% 100%, 80% 90%, 75% 100%, 70% 90%, 65% 100%, 60% 90%, 55% 100%, 50% 90%, 45% 100%, 40% 90%, 35% 100%, 30% 90%, 25% 100%, 20% 90%, 15% 100%, 10% 90%, 5% 100%, 0% 90%)',
-                    transform: isBtnHovered ? 'rotate(-1.5deg) translateY(-2px)' : 'rotate(1deg)',
+                    transform: 'rotate(1deg)',
                     transition: 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s',
                     display: 'flex',
                     alignItems: 'center',
@@ -277,7 +289,11 @@ const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClo
                   }}
                 >
                   <span>프로젝트 상세보기</span>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isBtnHovered ? 'scale(1.1) rotate(5deg)' : 'none', transition: 'transform 0.3s' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ transition: 'transform 0.3s' }}
+                    onMouseEnter={(e) => { (e.currentTarget as SVGSVGElement).style.transform = 'scale(1.1) rotate(5deg)'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as SVGSVGElement).style.transform = 'none'; }}
+                  >
                     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                     <polyline points="15 3 21 3 21 9"></polyline>
                     <line x1="10" y1="14" x2="21" y2="3"></line>
@@ -288,23 +304,7 @@ const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClo
           )}
         </div>
       </div>
-
-      <style>{`
-        @keyframes memoSlideIn {
-          0% { transform: translateX(calc(100% + 40px)) rotate(2.5deg); opacity: 0; }
-          100% { transform: translateX(0) rotate(0deg); opacity: 1; }
-        }
-        .memo-content-scroll::-webkit-scrollbar { width: 5px; }
-        .memo-content-scroll::-webkit-scrollbar-track { background: transparent; }
-        .memo-content-scroll::-webkit-scrollbar-thumb { background: rgba(160, 155, 125, 0.4); border-radius: 4px; }
-        .memo-content-scroll::-webkit-scrollbar-thumb:hover { background: rgba(160, 155, 125, 0.6); }
-
-        @media (max-width: 768px) {
-          .mobile-drag-handle {
-            display: block !important;
-          }
-        }
-      `}</style>
+      {/* ✨ style 태그 제거: memoSlideIn, 스크롤바 스타일은 globals.css로 이전 */}
     </>
   );
 };

@@ -79,13 +79,13 @@ const NodePlaceholder: React.FC<NodePlaceholderProps> = ({
 
   const handleHoverIn = () => {
     if (!isReady || disableInteraction || isFading) return;
-    document.body.style.cursor = 'pointer';
+    document.body.setAttribute('data-cursor', 'pointer');
     gsap.to(groupRef.current, { scaleX: 1.15, scaleY: 1.15, duration: 0.3, ease: "power2.out" });
     gsap.to(iconRef.current, { scaleX: 1.1, scaleY: 1.1, duration: 0.3 });
   };
 
   const handleMouseLeave = () => {
-    document.body.style.cursor = 'default';
+    document.body.removeAttribute('data-cursor');
     if (!isReady || disableInteraction || isFading) return;
     gsap.to(groupRef.current, { scaleX: 1, scaleY: 1, duration: 0.3, ease: "power2.out" });
     gsap.to(iconRef.current, { scaleX: 1, scaleY: 1, duration: 0.3 });

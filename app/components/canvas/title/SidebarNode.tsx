@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { RAW_TREE } from './data';
 import { SidebarIcon } from './SidebarIcons';
 
@@ -38,23 +38,25 @@ const SidebarNode: React.FC<SidebarNodeProps> = (props) => {
     nodeId, parentId, depth, activeIds, expandedNodes, setExpandedNodes, 
     onExpandNode, onMoveCameraOnly, onNodeDoubleClick, isAutoExploring, triggerMovementShield
   } = props;
-  
-  const node = RAW_TREE[nodeId];
-  if (!node) return null;
 
+  // ✨ [성능 최적화 #8] Hooks 규칙 위반 수정: useState/useRef/useEffect를 최상단으로 이동
+  // 이전에는 early return이 hooks 선언 앞에 있어 React Rules of Hooks 위반이었음
+  const node = RAW_TREE[nodeId];
+
+  const hasChildren = node ? (node.children && node.children.length > 0) : false;
+  const isFolderExpanded = !!expandedNodes[nodeId];
   const isActive = activeIds.includes(nodeId);
   const isAvailableCandidate = parentId === null || activeIds.includes(parentId);
-
-  if (!isActive && !isAvailableCandidate) return null;
-
-  const hasChildren = node.children && node.children.length > 0;
-  const isFolderExpanded = !!expandedNodes[nodeId];
-  
   const shouldBeOpen = isActive && isFolderExpanded;
-  const [isAnimating, setIsAnimating] = useState(false);
 
-  // ✨ 클릭 판정 분리를 위한 타이머 Ref
+  const [isAnimating, setIsAnimating] = useState(false);
   const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ✨ [성능 최적화 #17] hash를 useMemo로 캐싱 → nodeId는 고정값이므로 리렌더링마다 재계산 불필요
+  const rotation = useMemo(() => {
+    const hash = nodeId.split('').reduce((acc, char, idx) => acc + char.charCodeAt(0) * (idx + 1), 0);
+    return (Math.sin(hash) * 3.5).toFixed(2);
+  }, [nodeId]);
 
   useEffect(() => {
     if (shouldBeOpen) {
@@ -80,11 +82,13 @@ const SidebarNode: React.FC<SidebarNodeProps> = (props) => {
     };
   }, []);
 
-  const hash = nodeId.split('').reduce((acc, char, idx) => acc + char.charCodeAt(0) * (idx + 1), 0);
-  const rotation = (Math.sin(hash) * 3.5).toFixed(2);
+  // ✨ [성능 최적화 #8] early return을 hooks 선언 이후로 이동 (Hooks 규칙 위반 해소)
+  if (!node) return null;
+  if (!isActive && !isAvailableCandidate) return null;
 
   const textColor = isActive ? '#1A1A1A' : '#555555';
   const paperColor = lightenColor(node.color || '#333333', isActive ? 0.82 : 0.9);
+
 
   // ✨ 싱글 클릭 처리: 250ms 대기하여 더블클릭 판정이 아닐 경우에만 이동 및 쉴드 발동
   const handleItemClick = (e: React.MouseEvent) => {

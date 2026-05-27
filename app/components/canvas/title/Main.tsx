@@ -34,7 +34,7 @@ const Main = () => {
   
   const dashboardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { viewport, setViewport, isReady, isDraggingActive, handleMouseDown, moveCamera } = useInfiniteCanvas(VIRTUAL_SIZE);
+  const { viewport, setViewport, viewportRef, isReady, isDraggingActive, handleMouseDown, moveCamera } = useInfiniteCanvas(VIRTUAL_SIZE);
 
   useEffect(() => { setIsClient(true); }, []);
 
@@ -192,10 +192,12 @@ const Main = () => {
     const targetX = window.innerWidth / 2 - (CENTER * targetScale);
     const targetY = window.innerHeight / 2 - (CENTER * targetScale);
 
-    const vp = { ...viewport };
+    // ✨ [성능 최적화 #6] viewportRef.current를 animate → stale closure 해결
+    // onUpdate에서 ref를 통해 항상 최신값을 setViewport에 전달
+    const vp = viewportRef.current;
 
     const centerDuration = 1.0;
-    const centerScale = viewport.scale; 
+    const centerScale = vp.scale; 
     const centerX = window.innerWidth / 2 - (CENTER * centerScale);
     const centerY = window.innerHeight / 2 - (CENTER * centerScale);
 
@@ -231,7 +233,7 @@ const Main = () => {
       setIsAutoExploring(false);
     }, accumulatedTime + 2000);
 
-  }, [activeIds, viewport, setViewport, handleExpandNode, isAutoExploring]);
+  }, [activeIds, viewportRef, setViewport, handleExpandNode, isAutoExploring]);
 
   const handleCloseDashboard = () => {
     if (dashboardTimeoutRef.current) clearTimeout(dashboardTimeoutRef.current);
@@ -244,9 +246,6 @@ const Main = () => {
 
   return (
     <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap');
-      `}</style>
       <div style={{ fontFamily: "'Nanum Pen Script', cursive", position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -9999 }}>
         Preload Handwriting Font
       </div>
