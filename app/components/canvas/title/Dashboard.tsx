@@ -26,19 +26,7 @@ const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClo
         onClick={onClose} 
       />
 
-      <svg width="0" height="0" style={{ position: 'absolute', pointerEvents: 'none' }}>
-        {/* ✨ 테두리의 찢어진 종이 질감 연출을 위한 필터 */}
-        <filter id="static-paper-edge" x="-10%" y="-10%" width="140%" height="140%" colorInterpolationFilters="sRGB">
-          <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="5" result="paper-noise" />
-          <feDisplacementMap in="SourceGraphic" in2="paper-noise" scale="5.5" xChannelSelector="R" yChannelSelector="G" />
-        </filter>
-        
-        <filter id="handwriting-ink" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
-          <feTurbulence type="fractalNoise" baseFrequency="0.2" numOctaves="3" result="ink-noise" />
-          <feDisplacementMap in="SourceGraphic" in2="ink-noise" scale="1.5" xChannelSelector="R" yChannelSelector="G" result="displaced" />
-          <feGaussianBlur in="displaced" stdDeviation="0.4" />
-        </filter>
-      </svg>
+
 
       <div 
         className="paper-dashboard-container"
@@ -93,6 +81,7 @@ const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClo
           {/* 닫기 버튼 */}
           <button 
             onClick={onClose}
+            className="has-tooltip"
             style={{
               position: 'absolute', top: '48px', right: '32px',
               background: 'transparent', border: 'none',
@@ -101,7 +90,10 @@ const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClo
               zIndex: 10,
               transform: 'rotate(5deg)',
               transition: 'color 0.2s, transform 0.2s',
-              lineHeight: 1
+              lineHeight: 1,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.color = '#ff6b6b';
@@ -111,9 +103,9 @@ const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClo
               e.currentTarget.style.color = 'rgba(0,0,0,0.4)';
               e.currentTarget.style.transform = 'rotate(5deg) scale(1)';
             }}
-            title="닫기"
           >
             ✕
+            <span className="custom-tooltip-text tooltip-bottom">닫기</span>
           </button>
 
           {/* ID 태그 */}

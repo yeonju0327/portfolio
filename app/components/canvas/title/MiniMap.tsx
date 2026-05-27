@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { gsap } from 'gsap';
 import { PORTFOLIO_MAP, CENTER } from './data';
 
@@ -14,6 +14,7 @@ const MAP_SIZE = 240; // 미니맵 크기 대폭 확장 (180px -> 240px)
 export const MiniMap: React.FC<MiniMapProps> = ({ viewport, setViewport, activeIds }) => {
   const [windowSize, setWindowSize] = useState({ w: 1200, h: 800 });
   const mapRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
   const [isBtnHovered, setIsBtnHovered] = useState(false);
 
   useEffect(() => {
@@ -40,12 +41,84 @@ export const MiniMap: React.FC<MiniMapProps> = ({ viewport, setViewport, activeI
   const miniW = Math.max(5, Math.min(MAP_SIZE * 1.2, worldW * ratio));
   const miniH = Math.max(5, Math.min(MAP_SIZE * 1.2, worldH * ratio));
 
-  // 미니맵 클릭 시 해당 위치로 카메라 부드러운 이동 (버그 방지를 위한 월드 좌표 보간)
-  const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  // 카메라 뷰포트가 4000px 가상 공간을 벗어나지 않게 철저히 제약(clamp)하는 함수
+  const clampViewport = useCallback((x: number, y: number, scale: number) => {
+    const minX = windowSize.w - VIRTUAL_SIZE * scale;
+    const maxX = 0;
+    const minY = windowSize.h - VIRTUAL_SIZE * scale;
+    const maxY = 0;
+    return {
+      x: Math.max(minX, Math.min(maxX, x)),
+      y: Math.max(minY, Math.min(maxY, y))
+    };
+  }, [windowSize]);
+
+  // 실시간 마우스 드래그 좌표 추적 및 이동 함수
+  const handleDragMove = useCallback((clientX: number, clientY: number) => {
     if (!mapRef.current) return;
     const rect = mapRef.current.getBoundingClientRect();
     
-    // 테두리(4px)와 내부 패딩(8px)을 정확히 제외하여 내부 240px 캔버스 전용 좌표 산출
+    // 테두리(4px)와 패딩(8px) 제외 내부 240px 캔버스 상대 좌표
+    let clickX = clientX - rect.left - 4 - 8;
+    let clickY = clientY - rect.top - 4 - 8;
+
+    // 미니맵 캔버스 영역 밖으로 마우스가 탈출해도 0~MAP_SIZE 범위로 강제 고정
+    clickX = Math.max(0, Math.min(MAP_SIZE, clickX));
+    clickY = Math.max(0, Math.min(MAP_SIZE, clickY));
+
+    // 월드 좌표 역산
+    const targetWorldX = clickX / ratio;
+    const targetWorldY = clickY / ratio;
+
+    // 카메라 뷰포트 계산 및 경계 조건 반영
+    const targetX = windowSize.w / 2 - targetWorldX * viewport.scale;
+    const targetY = windowSize.h / 2 - targetWorldY * viewport.scale;
+    const clamped = clampViewport(targetX, targetY, viewport.scale);
+
+    setViewport({ x: clamped.x, y: clamped.y, scale: viewport.scale });
+  }, [ratio, windowSize, viewport.scale, setViewport, clampViewport]);
+
+  // 전역 마우스 이벤트 리스너를 통한 끊김 없는 드래그 UX 연동
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      e.preventDefault();
+      handleDragMove(e.clientX, e.clientY);
+    };
+
+    const handleGlobalMouseUp = () => {
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
+      }
+    };
+
+    window.addEventListener('mousemove', handleGlobalMouseMove, { passive: false });
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMouseMove);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [handleDragMove]);
+
+  // 마우스 다운 시 드래그 세션 시작
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    // 홈 복귀 포스트잇 버튼을 누를 때는 드래그로 취급하지 않음
+    if (target.closest('button')) return;
+
+    isDraggingRef.current = true;
+    gsap.killTweensOf(viewport); // 카메라이동 중이던 gsap 트윈 강제정지
+    handleDragMove(e.clientX, e.clientY);
+  };
+
+  // 미니맵 클릭 시 해당 위치로 카메라 부드러운 이동 (월드 좌표 및 경계 제한 보간)
+  const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // 드래그 마우스업 상황에서 오동작 방지
+    if (isDraggingRef.current) return;
+
+    if (!mapRef.current) return;
+    const rect = mapRef.current.getBoundingClientRect();
+    
     const clickX = e.clientX - rect.left - 4 - 8;
     const clickY = e.clientY - rect.top - 4 - 8;
 
@@ -62,7 +135,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({ viewport, setViewport, activeI
       worldY: startWorldY
     };
 
-    gsap.killTweensOf(viewport); // 기존 카메라 트윈 정지
+    gsap.killTweensOf(viewport);
 
     gsap.to(animObj, {
       worldX: targetWorldX,
@@ -70,15 +143,15 @@ export const MiniMap: React.FC<MiniMapProps> = ({ viewport, setViewport, activeI
       duration: 0.8,
       ease: 'power2.out',
       onUpdate: () => {
-        // 매 프레임 보간되는 월드 중심 좌표에 뷰포트 매핑 (튀지 않음)
-        const x = windowSize.w / 2 - animObj.worldX * viewport.scale;
-        const y = windowSize.h / 2 - animObj.worldY * viewport.scale;
-        setViewport({ x, y, scale: viewport.scale });
+        const targetX = windowSize.w / 2 - animObj.worldX * viewport.scale;
+        const targetY = windowSize.h / 2 - animObj.worldY * viewport.scale;
+        const clamped = clampViewport(targetX, targetY, viewport.scale);
+        setViewport({ x: clamped.x, y: clamped.y, scale: viewport.scale });
       }
     });
   };
 
-  // 나침반 홈 복귀 버튼 동작 (버그 완전 수정: 월드 중심 좌표와 스케일을 함께 동시 보간)
+  // 나침반 홈 복귀 버튼 동작 (월드 중심 좌표, 스케일 및 경계 제한 보간)
   const handleResetToCenter = (e: React.MouseEvent) => {
     e.stopPropagation();
     const defaultScale = 0.85;
@@ -94,7 +167,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({ viewport, setViewport, activeI
       scale: viewport.scale
     };
 
-    gsap.killTweensOf(viewport); // 기존 카메라 트윈 정지
+    gsap.killTweensOf(viewport);
 
     gsap.to(animObj, {
       worldX: CENTER,
@@ -103,10 +176,10 @@ export const MiniMap: React.FC<MiniMapProps> = ({ viewport, setViewport, activeI
       duration: 1.2,
       ease: 'power3.inOut',
       onUpdate: () => {
-        // 매 프레임의 보간 스케일에 맞춰 뷰포트 좌표 재계산 (구석으로 튀는 현상 완전 차단)
-        const x = windowSize.w / 2 - animObj.worldX * animObj.scale;
-        const y = windowSize.h / 2 - animObj.worldY * animObj.scale;
-        setViewport({ x, y, scale: animObj.scale });
+        const targetX = windowSize.w / 2 - animObj.worldX * animObj.scale;
+        const targetY = windowSize.h / 2 - animObj.worldY * animObj.scale;
+        const clamped = clampViewport(targetX, targetY, animObj.scale);
+        setViewport({ x: clamped.x, y: clamped.y, scale: animObj.scale });
       }
     });
   };
@@ -130,7 +203,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({ viewport, setViewport, activeI
         onClick={handleResetToCenter}
         onMouseEnter={() => setIsBtnHovered(true)}
         onMouseLeave={() => setIsBtnHovered(false)}
-        title="중앙(Profile)으로 돌아가기"
+        className="has-tooltip"
         style={{
           width: '56px',
           height: '56px',
@@ -171,17 +244,19 @@ export const MiniMap: React.FC<MiniMapProps> = ({ viewport, setViewport, activeI
         <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#5D4037', letterSpacing: '0.5px', lineHeight: 1 }}>
           HOME
         </span>
+        <span className="custom-tooltip-text tooltip-left">중앙으로 돌아가기</span>
       </button>
 
       {/* 🗺️ 미니맵 외부 뼈대 (종이 질감 및 테두리 장착) */}
       <div
         ref={mapRef}
+        onMouseDown={handleMouseDown}
         onClick={handleMapClick}
         style={{
-          padding: '8px', // 테두리와 내부 캔버스 사이의 고정된 아날로그 여백 패딩
+          padding: '8px', // 테두리와 내부 캔버스 사이의 고정된 여백 패딩
           backgroundColor: '#FDFCF8',
-          // 찢어진 종이 질감 필터 적용
-          filter: 'url(#static-paper-edge) drop-shadow(4px 8px 20px rgba(0,0,0,0.16))',
+          // 찢어진 종이 질감 필터 제거하고 부드러운 그림자만 적용
+          filter: 'drop-shadow(4px 8px 20px rgba(0,0,0,0.16))',
           border: '4px solid #B0A98F',
           borderStyle: 'solid',
           userSelect: 'none',

@@ -151,3 +151,89 @@ body {
   }
 }
 
+/* 툴팁 공용 아날로그 스타일 (둥근 모서리 8px) */
+.has-tooltip {
+  position: relative;
+  display: inline-flex;
+}
+
+.custom-tooltip-text {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  background-color: #2C2C2C;
+  color: #FDFCF8;
+  text-align: center;
+  padding: 6px 12px;
+  border-radius: 8px; /* 딱딱함 제거하고 둥글게 */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+  z-index: 2500;
+  transition: opacity 0.25s, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.tooltip-bottom {
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(14px);
+}
+
+.tooltip-top {
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-14px);
+}
+
+.tooltip-left {
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%) translateX(-14px);
+}
+
+.has-tooltip:hover .custom-tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+.has-tooltip:hover .tooltip-bottom {
+  transform: translateX(-50%) translateY(8px);
+}
+
+.has-tooltip:hover .tooltip-top {
+  transform: translateX(-50%) translateY(-8px);
+}
+
+.has-tooltip:hover .tooltip-left {
+  transform: translateY(-50%) translateX(-8px);
+}
+
+/* 사이드바 첫 번째 및 마지막 번째 툴팁 오프셋용 변형 */
+.tooltip-bottom-left {
+  top: 100%;
+  left: 0;
+  transform: translateY(14px);
+}
+
+.tooltip-bottom-right {
+  top: 100%;
+  right: 0;
+  left: auto;
+  transform: translateY(14px);
+}
+
+.has-tooltip:hover .tooltip-bottom-left {
+  transform: translateY(8px);
+}
+
+.has-tooltip:hover .tooltip-bottom-right {
+  transform: translateY(8px);
+}
+
+
+
