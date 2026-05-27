@@ -134,23 +134,26 @@ const Sidebar: React.FC<SidebarProps> = (props) => {
           </div>
 
           <div style={{ display: 'flex', gap: '10px', padding: '16px 24px 0 24px', position: 'relative', zIndex: 10 }}>
-            <button className="icon-btn" data-tooltip="모든 탭 펼치기" onClick={handleExpandAll}>
+            <button className="icon-btn has-tooltip" onClick={handleExpandAll}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="7 13 12 18 17 13"></polyline>
                 <polyline points="7 6 12 11 17 6"></polyline>
               </svg>
+              <span className="custom-tooltip-text tooltip-bottom-left">모든 탭 펼치기</span>
             </button>
-            <button className="icon-btn" data-tooltip="모든 탭 닫기" onClick={handleCollapseAll}>
+            <button className="icon-btn has-tooltip" onClick={handleCollapseAll}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="7 11 12 6 17 11"></polyline>
                 <polyline points="7 18 12 13 17 18"></polyline>
               </svg>
+              <span className="custom-tooltip-text tooltip-bottom">모든 탭 닫기</span>
             </button>
             <div style={{ width: '2px', backgroundColor: 'rgba(255,255,255,0.2)', margin: '0 6px' }} />
-            <button className="icon-btn" data-tooltip="지도 자동 탐색" onClick={handleTriggerAutoExplore}>
+            <button className="icon-btn has-tooltip" onClick={handleTriggerAutoExplore}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="5 3 19 12 5 21 5 3"></polygon>
               </svg>
+              <span className="custom-tooltip-text tooltip-bottom-right">지도 자동 탐색</span>
             </button>
           </div>
 
@@ -208,8 +211,6 @@ const Sidebar: React.FC<SidebarProps> = (props) => {
         .folder-toggle-btn::before { content: ''; position: absolute; top: -12px; bottom: -12px; left: -14px; right: -2px; z-index: 10; }
         .icon-btn { position: relative; background: transparent; border: 1px solid rgba(255, 255, 255, 0.25); color: rgba(255, 255, 255, 0.7); padding: 6px; border-radius: 4px; transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.2s; display: flex; align-items: center; justify-content: center; }
         .icon-btn:hover { background-color: rgba(255, 255, 255, 0.15); color: #FFFFFF; border-color: rgba(255, 255, 255, 0.6); transform: translateY(-1px); }
-        .icon-btn::after { content: attr(data-tooltip); position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 8px; background-color: #2C2C2C; color: #FFFFFF; padding: 5px 10px; border-radius: 4px; font-size: 0.95rem; font-family: "'Nanum Pen Script', cursive"; letter-spacing: 1px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 2000; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-        .icon-btn:first-of-type::after { left: 0; transform: translateX(0); } .icon-btn:last-of-type::after { left: auto; right: 0; transform: translateX(0); } .icon-btn:hover::after { opacity: 1; }
         .sidebar-scroll::-webkit-scrollbar { width: 6px; } .sidebar-scroll::-webkit-scrollbar-track { background: transparent; } .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.25); border-radius: 6px; } .sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.45); }
       `}</style>
     </>
