@@ -53,7 +53,9 @@ const Main = () => {
   const [dashboardPos, setDashboardPos] = useState<'left' | 'right' | 'top' | null>(() => {
     if (typeof window !== 'undefined' && isRestoredRef.current) {
       const savedFocused = sessionStorage.getItem('portfolio_focused_node');
-      if (savedFocused && PORTFOLIO_MAP[savedFocused]) {
+      const savedDashboardOpen = sessionStorage.getItem('portfolio_dashboard_open');
+      // 대시보드가 열려있었고 & 포커스된 노드가 있는 경우에만 복원
+      if (savedFocused && PORTFOLIO_MAP[savedFocused] && savedDashboardOpen === 'true') {
         return 'right';
       }
     }
@@ -121,6 +123,13 @@ const Main = () => {
     }
   }, [focusedNodeId]);
 
+  // 대시보드 on/off 상태 저장
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('portfolio_dashboard_open', dashboardPos ? 'true' : 'false');
+    }
+  }, [dashboardPos]);
+
   // 마운트 시 대시보드 포커스 복원 및 복원 플래그 소모 (없을 시 일괄 삭제)
   useIsomorphicLayoutEffect(() => {
     if (typeof window === 'undefined') return;
@@ -154,6 +163,7 @@ const Main = () => {
       sessionStorage.removeItem('portfolio_node_delays');
       sessionStorage.removeItem('portfolio_focused_node');
       sessionStorage.removeItem('portfolio_sidebar_open');
+      sessionStorage.removeItem('portfolio_dashboard_open');
     }
   }, [playInTransition]);
 

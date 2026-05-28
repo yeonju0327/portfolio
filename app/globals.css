@@ -150,11 +150,31 @@ html, body, * {
   100% { transform: translateX(0) rotate(0deg); opacity: 1; }
 }
 
+/* ✨ Dashboard 슬라이드아웃 애니메이션 (닫기 시 오른쪽 밖으로) */
+@keyframes memoSlideOut {
+  0% { transform: translateX(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateX(calc(100% + 40px)) rotate(2.5deg); opacity: 0; }
+}
+
 /* ✨ Dashboard 스크롤바 스타일 (Dashboard.tsx inline style에서 이전) */
 .memo-content-scroll::-webkit-scrollbar { width: 5px; }
 .memo-content-scroll::-webkit-scrollbar-track { background: transparent; }
 .memo-content-scroll::-webkit-scrollbar-thumb { background: rgba(160, 155, 125, 0.4); border-radius: 4px; }
 .memo-content-scroll::-webkit-scrollbar-thumb:hover { background: rgba(160, 155, 125, 0.6); }
+
+/* ✨ Dashboard 애니메이션 상태별 클래스 */
+.dashboard-entering {
+  animation: memoSlideIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+.dashboard-leaving {
+  animation: memoSlideOut 0.6s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+}
+.dashboard-visible {
+  animation: none !important;
+}
+.dashboard-hidden {
+  display: none !important;
+}
 
 @media (max-width: 768px) {
   .paper-dashboard-container {

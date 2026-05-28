@@ -14,6 +14,7 @@ interface SidebarNodeProps {
   onNodeDoubleClick: (nodeId: string) => void;
   isAutoExploring: boolean;
   triggerMovementShield: () => void; // ✨ 상위 쉴드 함수 수신
+  isRestored?: boolean; // ✨ 복원 모드 전달
 }
 
 export const lightenColor = (hex: string, factor = 0.85) => {
@@ -60,6 +61,10 @@ const SidebarNode: React.FC<SidebarNodeProps> = React.memo((props) => {
 
   useEffect(() => {
     if (shouldBeOpen) {
+      if (props.isRestored) {
+        setIsAnimating(true);
+        return;
+      }
       let frame2: number;
       const frame1 = requestAnimationFrame(() => {
         frame2 = requestAnimationFrame(() => {
@@ -73,7 +78,7 @@ const SidebarNode: React.FC<SidebarNodeProps> = React.memo((props) => {
     } else {
       setIsAnimating(false);
     }
-  }, [shouldBeOpen]);
+  }, [shouldBeOpen, props.isRestored]);
 
   // 언마운트 시 타이머 정리
   useEffect(() => {
@@ -184,7 +189,7 @@ const SidebarNode: React.FC<SidebarNodeProps> = React.memo((props) => {
           style={{
             display: 'grid',
             gridTemplateRows: isAnimating ? '1fr' : '0fr',
-            transitionProperty: 'grid-template-rows',
+            transitionProperty: props.isRestored ? 'none' : 'grid-template-rows',
             transitionDuration: '0.4s',
             transitionTimingFunction: 'cubic-bezier(0.25, 1, 0.5, 1)',
             position: 'relative',
@@ -199,7 +204,7 @@ const SidebarNode: React.FC<SidebarNodeProps> = React.memo((props) => {
                 marginBottom: '4px',
                 transform: isAnimating ? 'translateY(0)' : 'translateY(-20px)',
                 opacity: isAnimating ? 1 : 0,
-                transitionProperty: 'transform, opacity',
+                transitionProperty: props.isRestored ? 'none' : 'transform, opacity',
                 transitionDuration: '0.4s, 0.3s',
                 transitionTimingFunction: 'cubic-bezier(0.25, 1, 0.5, 1), ease',
                 transitionDelay: isAnimating ? '0.1s, 0s' : '0s, 0.15s',

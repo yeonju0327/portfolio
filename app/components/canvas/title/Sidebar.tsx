@@ -20,8 +20,17 @@ const Sidebar: React.FC<SidebarProps> = React.memo((props) => {
     }
     return false;
   });
-  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({ root: true });
-  const [isHeadMounted, setIsHeadMounted] = useState(false);
+  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('portfolio_sidebar_expanded');
+      if (saved) return JSON.parse(saved);
+    }
+    return { root: true };
+  });
+  // 복원 모드에서는 처음부터 true로 초기화하여 내부 탭 슬라이드업 애니메이션 생략
+  const [isHeadMounted, setIsHeadMounted] = useState(props.isRestored ?? false);
+  // ✨ 마운트 시점의 isRestored를 ref로 고정: 이후 props 변화에 무관하게 transition 조건 유지
+  const wasRestoredRef = React.useRef(props.isRestored ?? false);
   const [disableAnimation, setDisableAnimation] = useState(props.isRestored ?? false);
 
   useEffect(() => {
@@ -44,11 +53,19 @@ const Sidebar: React.FC<SidebarProps> = React.memo((props) => {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      sessionStorage.setItem('portfolio_sidebar_expanded', JSON.stringify(expandedNodes));
+    }
+  }, [expandedNodes]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
       sessionStorage.setItem('portfolio_sidebar_open', isOpen.toString());
     }
   }, [isOpen]);
 
   useEffect(() => {
+    // 복원 모드일 때는 이미 true이므로 타이머 불필요
+    if (props.isRestored) return;
     const headTimer = setTimeout(() => {
       setIsHeadMounted(true);
     }, 50);
@@ -108,7 +125,8 @@ const Sidebar: React.FC<SidebarProps> = React.memo((props) => {
           
           // ✨ 2. 투명도 무시 그림자 문제 해결 (box-shadow 완전 제거 -> filter: drop-shadow 사용)
           // 이미지의 불투명한 픽셀(나무 테두리) 모양을 그대로 따라가는 진짜 그림자 생성
-          filter: disableAnimation ? 'none' : (isOpen ? 'drop-shadow(14px 14px 20px rgba(0,0,0,0.5))' : 'drop-shadow(0px 0px 0px rgba(0,0,0,0))'),
+          // ⚠️ disableAnimation 시에도 'none' 대신 올바른 값 사용: CSS는 none↔drop-shadow간 transition 불가
+          filter: isOpen ? 'drop-shadow(14px 14px 20px rgba(0,0,0,0.5))' : 'drop-shadow(0px 0px 0px rgba(0,0,0,0))',
           boxShadow: 'none', 
         }}
       >
@@ -180,7 +198,10 @@ const Sidebar: React.FC<SidebarProps> = React.memo((props) => {
             <div style={{
               transform: isHeadMounted ? 'translateY(0)' : 'translateY(-30px)',
               opacity: isHeadMounted ? 1 : 0,
-              transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0.1s, opacity 0.2s ease-out 0s'
+              // ✨ 복원 모드(wasRestoredRef=true)에서는 transition을 완전히 제거:
+              // disableAnimation이 50ms 뒤 false가 되어 no-animation 클래스가 해제될 때
+              // 브라우저가 translateY(-30px)→(0) 전환을 재생하는 버그를 원천 차단
+              transition: wasRestoredRef.current ? 'none' : 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0.1s, opacity 0.2s ease-out 0s'
             }}>
               <SidebarNode 
                 nodeId="root" 

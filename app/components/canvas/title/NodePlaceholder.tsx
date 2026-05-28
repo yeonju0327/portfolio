@@ -110,7 +110,13 @@ const NodePlaceholder: React.FC<NodePlaceholderProps> = ({
           ref={groupRef}
           onMouseEnter={handleHoverIn} 
           onMouseLeave={handleMouseLeave}
-          style={{ cursor: 'pointer', transformOrigin: 'center center' }}
+          style={{ 
+            cursor: 'pointer', 
+            transformOrigin: 'center center',
+          }}
+          // GSAP useEffect 실행 전 1프레임 플래시 방지: SVG opacity 어트리뷰트로 초기 숨김
+          // (GSAP은 style.opacity를 덮어쓰고, transform은 GSAP이 어트리뷰트로 관리하므로 분리)
+          opacity={isRestored ? 1 : 0}
         >
           {/* Hitbox */}
           <circle r={35} fill="transparent" />

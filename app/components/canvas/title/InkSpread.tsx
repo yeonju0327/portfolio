@@ -70,7 +70,7 @@ const InkSpread: React.FC<ExtendedProps> = React.memo(
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', filter: 'url(#crayon-texture)', pointerEvents: 'none' }}>
             <svg width={stageSize} height={stageSize} style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', overflow: 'visible' }}>
               <g transform={`translate(${x}, ${y})`}>
-                <g ref={refs.iconRef} style={{ transformOrigin: 'center center' }}>
+                <g ref={refs.iconRef} style={{ transformOrigin: 'center center', opacity: 0 }}>
                   <path d={iconPathData} stroke="rgba(255, 255, 255, 0.9)" strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" />
                 </g>
               </g>
