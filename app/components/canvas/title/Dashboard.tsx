@@ -2,19 +2,22 @@ import React from 'react';
 import Link from 'next/link';
 import { MapData } from './data';
 import { CustomScrollContainer } from './CustomScrollContainer';
+import { useTransitionContext } from '../../../context/TransitionContext';
 
 interface DashboardProps {
   selectedNode: MapData[string] | null;
   dashboardPos: 'left' | 'right' | 'top' | null;
   onClose: () => void;
   isRestored?: boolean;
+  viewport: { x: number; y: number; scale: number };
 }
 
 const RULED_LINES_TEXTURE = `repeating-linear-gradient(transparent 0px, transparent 32px, rgba(160, 155, 125, 0.3) 32px, rgba(160, 155, 125, 0.3) 34px)`;
 
 const tagColors = ['#FFF9C4', '#F1F8E9', '#E0F7FA', '#F3E5F5', '#FFE0B2', '#FFCDD2'];
 
-const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClose, isRestored }) => {
+const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClose, isRestored, viewport }) => {
+  const { startTransition } = useTransitionContext();
   // 마운트 시점의 복원 여부를 로컬 상태로 굳혀서 리렌더링에 의한 애니메이션 재실행 방지
   const [initialIsRestored] = React.useState(isRestored ?? false);
 
@@ -301,6 +304,17 @@ const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClo
               </button>
             );
 
+            const handleDetailClick = (e: React.MouseEvent) => {
+              e.preventDefault();
+              if (!selectedNode.linkUrl) return;
+              const screenX = selectedNode.x * viewport.scale + viewport.x;
+              const screenY = selectedNode.y * viewport.scale + viewport.y;
+              const sizeVal = selectedNode.size ?? 85;
+              const screenRadius = sizeVal * 1.15 * viewport.scale;
+              const screenImageRadius = (sizeVal - 5) * 1.15 * viewport.scale;
+              startTransition(selectedNode.linkUrl, screenX, screenY, screenRadius, screenImageRadius, selectedNode.img || '', selectedNode.color || '#2C2C2C');
+            };
+
             return (
               <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', pointerEvents: 'auto', transform: 'rotate(-0.5deg)' }}>
                 {isExternal ? (
@@ -313,12 +327,12 @@ const Dashboard: React.FC<DashboardProps> = ({ selectedNode, dashboardPos, onClo
                     {buttonContent}
                   </a>
                 ) : (
-                  <Link 
-                    href={selectedNode.linkUrl} 
+                  <div 
+                    onClick={handleDetailClick}
                     style={{ textDecoration: 'none', display: 'block', width: '100%' }}
                   >
                     {buttonContent}
-                  </Link>
+                  </div>
                 )}
               </div>
             );

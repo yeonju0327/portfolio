@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import CustomCursor from "./components/canvas/title/CustomCursor";
+import { TransitionProvider } from "./context/TransitionContext";
+import TransitionOverlay from "./components/canvas/title/TransitionOverlay";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,8 +39,11 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col">
-        {children}
-        <CustomCursor />
+        <TransitionProvider>
+          {children}
+          <TransitionOverlay />
+          <CustomCursor />
+        </TransitionProvider>
       </body>
     </html>
   );

@@ -13,11 +13,13 @@ import Sidebar from './Sidebar';
 import MiniMap from './MiniMap';
 import { useInfiniteCanvas } from '../../../hooks/useInfiniteCanvas'; 
 import { PORTFOLIO_MAP, CENTER, MapData, RAW_TREE } from './data';
+import { useTransitionContext } from '../../../context/TransitionContext';
 import { getEdgePoints } from './utils';
 
 const VIRTUAL_SIZE = 4000;
 
 const Main = () => {
+  const { playInTransition } = useTransitionContext();
   const isRestoredRef = useRef(typeof window !== 'undefined' ? sessionStorage.getItem('portfolio_should_restore') === 'true' : false);
   const [isRestored, setIsRestored] = useState(() => isRestoredRef.current);
   const [isClient, setIsClient] = useState(false);
@@ -122,6 +124,19 @@ const Main = () => {
     if (typeof window === 'undefined') return;
     
     if (isRestoredRef.current) {
+      // 복원 대상 노드 ID 획득 및 In-transition 연동
+      const savedFocused = sessionStorage.getItem('portfolio_focused_node');
+      if (savedFocused && PORTFOLIO_MAP[savedFocused]) {
+        const node = PORTFOLIO_MAP[savedFocused];
+        // 뷰포트가 복원되어 있으므로 최신 뷰포트를 사용하여 스크린 위치 역산
+        const screenX = node.x * viewportRef.current.scale + viewportRef.current.x;
+        const screenY = node.y * viewportRef.current.scale + viewportRef.current.y;
+        const sizeVal = node.size ?? 85;
+        const screenRadius = sizeVal * 1.15 * viewportRef.current.scale;
+        const screenImageRadius = (sizeVal - 5) * 1.15 * viewportRef.current.scale;
+        playInTransition(screenX, screenY, screenRadius, screenImageRadius, node.img || '', node.color || '#2C2C2C');
+      }
+
       // 복원 플래그 소모
       sessionStorage.removeItem('portfolio_should_restore');
       // 마운트 완료 후 일정 시간 뒤에 복원 상태를 해제하여 이후 애니메이션이 동작하게 함
@@ -138,7 +153,7 @@ const Main = () => {
       sessionStorage.removeItem('portfolio_focused_node');
       sessionStorage.removeItem('portfolio_sidebar_open');
     }
-  }, []);
+  }, [playInTransition]);
 
   const activeNodes = useMemo(() => activeIds.map(id => PORTFOLIO_MAP[id]), [activeIds]);
 
@@ -462,7 +477,7 @@ const Main = () => {
         isRestored={isRestored}
       />
 
-      <Dashboard selectedNode={selectedNode} dashboardPos={dashboardPos} onClose={handleCloseDashboard} isRestored={isRestored} />
+      <Dashboard selectedNode={selectedNode} dashboardPos={dashboardPos} onClose={handleCloseDashboard} isRestored={isRestored} viewport={viewport} />
 
       <MiniMap viewport={viewport} setViewport={setViewport} activeIds={activeIds} links={links} isAutoExploring={isAutoExploring} onAutoExplore={handleAutoExplore} />
     </>

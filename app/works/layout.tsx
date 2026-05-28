@@ -2,17 +2,22 @@
 
 import React, { useEffect } from 'react';
 import '../globals.css';
+import { useTransitionContext } from '../context/TransitionContext';
 
 export default function WorksLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { playInDetailTransition } = useTransitionContext();
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('portfolio_should_restore', 'true');
     }
-  }, []);
+    // 작품 상세에 진입 완료했으므로 화면을 덮고 있던 덮개 오프너(구멍 열기) 가동
+    playInDetailTransition();
+  }, [playInDetailTransition]);
 
   return (
     <div className="works-root-layout" style={{ position: 'relative', minHeight: '100vh', backgroundColor: '#e5e5e5' }}>

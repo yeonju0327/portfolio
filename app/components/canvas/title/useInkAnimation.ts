@@ -146,18 +146,25 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
 
   useEffect(() => {
     if (isRestored) {
-      gsap.set(mainGroupRef.current, { scaleX: 1, scaleY: 1, opacity: 1 });
-      gsap.set(inkSpreadRef.current, { innerRadius: 0, outerRadius: size });
-      gsap.set(imageRef.current, { opacity: 0 });
-      gsap.set(iconRef.current, { opacity: 0.35, scaleX: ICON_SCALE, scaleY: ICON_SCALE }); 
-      if (captionRef.current) gsap.set(captionRef.current, { opacity: 0, y: size + 10 });
+      const isClicked = isNodeClickedRef.current;
+      gsap.set(mainGroupRef.current, { scaleX: isClicked ? 1.15 : 1, scaleY: isClicked ? 1.15 : 1, opacity: 1 });
+      gsap.set(inkSpreadRef.current, { innerRadius: isClicked ? HOVER_INNER_RADIUS : 0, outerRadius: size });
+      gsap.set(imageRef.current, { opacity: isClicked ? 1 : 0 });
+      gsap.set(iconRef.current, { opacity: isClicked ? 0 : 0.35, scaleX: ICON_SCALE, scaleY: ICON_SCALE }); 
+      if (captionRef.current) {
+        gsap.set(captionRef.current, { opacity: isClicked ? 1 : 0, y: isClicked ? size + 25 : size + 10 });
+      }
+      
+      hoverProxy.current.inner = isClicked ? HOVER_INNER_RADIUS : 0;
+      hoverProxy.current.filterScale = isClicked ? 0 : 20;
       
       mainProgressRef.current.scale = 1;
       isReadyRef.current = true;
       applyCurrentValues(true);
 
-      if (isNodeClickedRef.current) {
-        updateHoverState('full');
+      if (isClicked) {
+        document.body.setAttribute('data-cursor', 'pointer');
+        hoverState.current = 'full';
       }
       return;
     }

@@ -400,6 +400,8 @@ export const MiniMap: React.FC<MiniMapProps> = React.memo(({ viewport, setViewpo
               노드의 좌표/색상은 불변 → activeIds 변화 시에만 재계산 */}
           {useMemo(() => Object.entries(PORTFOLIO_MAP).map(([id, node]) => {
             const isActive = activeIds.includes(id);
+            if (!isActive) return null;
+
             const isRoot = id === 'root';
             const nx = node.x * ratio;
             const ny = node.y * ratio;
@@ -413,9 +415,9 @@ export const MiniMap: React.FC<MiniMapProps> = React.memo(({ viewport, setViewpo
                   width: isRoot ? '8px' : '5px',
                   height: isRoot ? '8px' : '5px',
                   borderRadius: '50%',
-                  backgroundColor: isActive ? (node.color || '#2C2C2C') : '#CCCCCC',
+                  backgroundColor: node.color || '#2C2C2C',
                   border: isRoot ? '1px solid #000' : 'none',
-                  opacity: isActive ? 1 : 0.4,
+                  opacity: 1,
                   zIndex: isRoot ? 10 : 5,
                   transition: 'background-color 0.3s, transform 0.3s'
                 }}

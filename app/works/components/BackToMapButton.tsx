@@ -1,14 +1,28 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { useTransitionContext } from '../../context/TransitionContext';
+import { PORTFOLIO_MAP } from '../../components/canvas/title/data';
 
 export default function BackToMapButton() {
-  const router = useRouter();
+  const { startBackTransition } = useTransitionContext();
+  
+  const handleBackToMap = () => {
+    let nodeColor = '#2C2C2C';
+    let nodeImg = '';
+    if (typeof window !== 'undefined') {
+      const savedFocused = sessionStorage.getItem('portfolio_focused_node');
+      if (savedFocused && PORTFOLIO_MAP[savedFocused]) {
+        nodeColor = PORTFOLIO_MAP[savedFocused].color || '#2C2C2C';
+        nodeImg = PORTFOLIO_MAP[savedFocused].img || '';
+      }
+    }
+    startBackTransition(nodeColor, nodeImg, '/');
+  };
   
   return (
     <button
-      onClick={() => router.push('/')}
+      onClick={handleBackToMap}
       style={{
         position: 'fixed', top: '24px', left: '24px', zIndex: 1000,
         background: '#FFF9C4', color: '#2C2C2C', border: 'none',
