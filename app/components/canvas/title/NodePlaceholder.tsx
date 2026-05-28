@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
-import { Group, Circle, Path } from 'react-konva';
 import { gsap } from 'gsap';
 
 interface NodePlaceholderProps {
@@ -18,10 +17,10 @@ interface NodePlaceholderProps {
 const NodePlaceholder: React.FC<NodePlaceholderProps> = ({ 
   x, y, color, iconType, targetDelay, onClick, isFading, isDraggingActive, isAutoExploring, isRestored = false 
 }) => {
-  const groupRef = useRef<import('konva/lib/Group').Group>(null);
-  const dashedRingRef = useRef<import('konva/lib/shapes/Circle').Circle>(null);
-  const glowRef = useRef<import('konva/lib/shapes/Circle').Circle>(null);
-  const iconRef = useRef<import('konva/lib/Group').Group>(null);
+  const groupRef = useRef<SVGGElement>(null);
+  const dashedRingRef = useRef<SVGCircleElement>(null);
+  const glowRef = useRef<SVGCircleElement>(null);
+  const iconRef = useRef<SVGGElement>(null);
   
   const [isReady, setIsReady] = useState(false);
   const isFadingRef = useRef(false);
@@ -40,47 +39,46 @@ const NodePlaceholder: React.FC<NodePlaceholderProps> = ({
   useEffect(() => {
     if (groupRef.current && dashedRingRef.current && glowRef.current) {
       if (isRestored) {
-        gsap.set(groupRef.current, { scaleX: 1, scaleY: 1, opacity: 1 });
+        gsap.set(groupRef.current, { scale: 1, opacity: 1, transformOrigin: "50% 50%" });
         setIsReady(true);
       } else {
-        // ✨ 해결: 초기 렌더링 시 하드코딩되었던 1.8초를 targetDelay(부모의 딜레이가 가산된 시간)로 변경하여 동기화
         gsap.fromTo(groupRef.current, 
-          { scaleX: 0, scaleY: 0, opacity: 0 }, 
+          { scale: 0, opacity: 0, transformOrigin: "50% 50%" }, 
           { 
-            scaleX: 1, scaleY: 1, opacity: 1, duration: 1, delay: targetDelay, ease: "back.out(1.5)",
+            scale: 1, opacity: 1, duration: 1, delay: targetDelay, ease: "back.out(1.5)",
             onComplete: () => { setIsReady(true); } 
           }
         );
       }
 
-      gsap.to(dashedRingRef.current, { rotation: 360, duration: 15, repeat: -1, ease: "none" });
-      gsap.to(glowRef.current, { scaleX: 1.15, scaleY: 1.15, opacity: 0.35, duration: 1.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+      gsap.to(dashedRingRef.current, { rotation: 360, duration: 15, repeat: -1, ease: "none", transformOrigin: "50% 50%" });
+      gsap.to(glowRef.current, { scale: 1.15, opacity: 0.35, duration: 1.5, yoyo: true, repeat: -1, ease: "sine.inOut", transformOrigin: "50% 50%" });
     }
   }, [targetDelay, isRestored]);
 
   useEffect(() => {
     if (isFading && groupRef.current) {
       if (isRestored) {
-        gsap.set(groupRef.current, { opacity: 0, scaleX: 1.1, scaleY: 1.1 });
+        gsap.set(groupRef.current, { opacity: 0, scale: 1.1, transformOrigin: "50% 50%" });
         isFadingRef.current = true;
       } else if (!isFadingRef.current) {
         isFadingRef.current = true;
         const fadeOutDelay = (targetDelay + 0.8) + 0.55;
         gsap.to(groupRef.current, {
           opacity: 0, 
-          scaleX: 1.1, 
-          scaleY: 1.1, 
+          scale: 1.1, 
           duration: 0.6, 
           delay: fadeOutDelay, 
           ease: "power2.inOut",
+          transformOrigin: "50% 50%"
         });
       }
     }
   }, [isFading, targetDelay, isRestored]);
 
-  const handleSafeClick = (e: any) => {
+  const handleSafeClick = (e: React.MouseEvent) => {
     if (!isReady || disableInteraction || isFading || isFadingRef.current) {
-      if (e) e.cancelBubble = true;
+      e.stopPropagation();
       return;
     }
     onClick();
@@ -89,33 +87,44 @@ const NodePlaceholder: React.FC<NodePlaceholderProps> = ({
   const handleHoverIn = () => {
     if (!isReady || disableInteraction || isFading) return;
     document.body.setAttribute('data-cursor', 'pointer');
-    gsap.to(groupRef.current, { scaleX: 1.15, scaleY: 1.15, duration: 0.3, ease: "power2.out" });
-    gsap.to(iconRef.current, { scaleX: 1.1, scaleY: 1.1, duration: 0.3 });
+    gsap.to(groupRef.current, { scale: 1.15, duration: 0.3, ease: "power2.out", transformOrigin: "50% 50%" });
+    gsap.to(iconRef.current, { scale: 1.1, duration: 0.3, transformOrigin: "50% 50%" });
   };
 
   const handleMouseLeave = () => {
     document.body.removeAttribute('data-cursor');
     if (!isReady || disableInteraction || isFading) return;
-    gsap.to(groupRef.current, { scaleX: 1, scaleY: 1, duration: 0.3, ease: "power2.out" });
-    gsap.to(iconRef.current, { scaleX: 1, scaleY: 1, duration: 0.3 });
+    gsap.to(groupRef.current, { scale: 1, duration: 0.3, ease: "power2.out", transformOrigin: "50% 50%" });
+    gsap.to(iconRef.current, { scale: 1, duration: 0.3, transformOrigin: "50% 50%" });
   };
 
   return (
-    <Group 
-      ref={groupRef} x={x} y={y} 
-      listening={isReady && !isFading && !disableInteraction} 
-      onClick={handleSafeClick} 
-      onTap={handleSafeClick}
-      onMouseEnter={handleHoverIn} 
-      onMouseLeave={handleMouseLeave}
+    <svg 
+      width="110" 
+      height="110" 
+      style={{ pointerEvents: isReady && !isFading && !disableInteraction ? 'auto' : 'none', overflow: 'visible' }}
+      onClick={handleSafeClick}
     >
-      <Circle radius={35} fill="transparent" />
-      <Circle ref={glowRef} radius={28} fill={color} opacity={0.15} />
-      <Circle ref={dashedRingRef} radius={28} stroke={color} strokeWidth={2.5} dash={[8, 8]} opacity={0.8} />
-      <Group ref={iconRef}>
-        <Path data={iconPathData} stroke={color} strokeWidth={3} lineCap="round" lineJoin="round" opacity={0.9} />
-      </Group>
-    </Group>
+      <g transform="translate(55, 55)">
+        <g 
+          ref={groupRef}
+          onMouseEnter={handleHoverIn} 
+          onMouseLeave={handleMouseLeave}
+          style={{ cursor: 'pointer', transformOrigin: 'center center' }}
+        >
+          {/* Hitbox */}
+          <circle r={35} fill="transparent" />
+          {/* Glow */}
+          <circle ref={glowRef} r={28} fill={color} opacity={0.15} style={{ transformOrigin: 'center center' }} />
+          {/* Dashed Ring */}
+          <circle ref={dashedRingRef} r={28} stroke={color} strokeWidth={2.5} strokeDasharray="8 8" fill="none" opacity={0.8} style={{ transformOrigin: 'center center' }} />
+          {/* Icon */}
+          <g ref={iconRef} style={{ transformOrigin: 'center center' }}>
+            <path d={iconPathData} stroke={color} strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.9} />
+          </g>
+        </g>
+      </g>
+    </svg>
   );
 };
 

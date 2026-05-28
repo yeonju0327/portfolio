@@ -376,7 +376,7 @@ export const MiniMap: React.FC<MiniMapProps> = React.memo(({ viewport, setViewpo
               zIndex: 3
             }}
           >
-            {links.map((link, idx) => {
+            {useMemo(() => links.map((link, idx) => {
               const s = PORTFOLIO_MAP[link.source];
               const t = PORTFOLIO_MAP[link.target];
               if (!s || !t) return null;
@@ -392,7 +392,7 @@ export const MiniMap: React.FC<MiniMapProps> = React.memo(({ viewport, setViewpo
                   opacity="0.45"
                 />
               );
-            })}
+            }), [links, ratio])}
           </svg>
 
           {/* 노드 점들 */}

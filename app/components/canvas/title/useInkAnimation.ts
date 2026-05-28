@@ -6,8 +6,8 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
   const mainGroupRef = useRef<import("konva/lib/Group").Group>(null);
   const inkSpreadRef = useRef<import("konva/lib/shapes/Ring").Ring>(null);
   const imageRef = useRef<import("konva/lib/shapes/Image").Image>(null);
-  const captionRef = useRef<import("konva/lib/shapes/Text").Text>(null);
-  const iconRef = useRef<import("konva/lib/Group").Group>(null);
+  const captionRef = useRef<HTMLDivElement>(null);
+  const iconRef = useRef<SVGGElement>(null);
   const filterLayerRef = useRef<HTMLDivElement>(null);
 
   const filterTweenRef = useRef<gsap.core.Tween | null>(null);
@@ -79,7 +79,7 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
       
       gsap.to(mainGroupRef.current, { scaleX: 1.15, scaleY: 1.15, duration: 0.25, ease: "power2.out" });
       gsap.to(imageRef.current, { opacity: 1, duration: 0.25, ease: "power2.out" });
-      gsap.to(iconRef.current, { opacity: 0, duration: 0.25, ease: "power2.out" });
+      gsap.to(iconRef.current, { opacity: 0, duration: 0.25, ease: "power2.out", transformOrigin: "50% 50%" });
       if (captionRef.current) gsap.to(captionRef.current, { opacity: 1, y: size + 25, duration: 0.25, ease: "power2.out" });
       
       filterTweenRef.current = gsap.to(hoverProxy.current, { 
@@ -95,7 +95,7 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
 
       gsap.to(mainGroupRef.current, { scaleX: 1.05, scaleY: 1.05, duration: 0.4, ease: "power2.out" });
       gsap.to(imageRef.current, { opacity: 0, duration: 0.3, ease: "power2.out" });
-      gsap.to(iconRef.current, { opacity: 0.8, duration: 0.4, ease: "power2.out" });
+      gsap.to(iconRef.current, { opacity: 0.8, duration: 0.4, ease: "power2.out", transformOrigin: "50% 50%" });
       if (captionRef.current) gsap.to(captionRef.current, { opacity: 0, y: size + 10, duration: 0.3, ease: "power2.out" }); 
       
       filterTweenRef.current = gsap.to(hoverProxy.current, { 
@@ -111,7 +111,7 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
 
       gsap.to(mainGroupRef.current, { scaleX: 1, scaleY: 1, duration: 0.35, ease: "power3.out" });
       gsap.to(imageRef.current, { opacity: 0, duration: 0.35, ease: "power3.out" });
-      gsap.to(iconRef.current, { opacity: 0.35, duration: 0.35, ease: "power3.out" });
+      gsap.to(iconRef.current, { opacity: 0.35, duration: 0.35, ease: "power3.out", transformOrigin: "50% 50%" });
       if (captionRef.current) gsap.to(captionRef.current, { opacity: 0, y: size + 10, duration: 0.35, ease: "power3.out" });
       
       filterTweenRef.current = gsap.to(hoverProxy.current, { 
@@ -150,7 +150,7 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
       gsap.set(mainGroupRef.current, { scaleX: isClicked ? 1.15 : 1, scaleY: isClicked ? 1.15 : 1, opacity: 1 });
       gsap.set(inkSpreadRef.current, { innerRadius: isClicked ? HOVER_INNER_RADIUS : 0, outerRadius: size });
       gsap.set(imageRef.current, { opacity: isClicked ? 1 : 0 });
-      gsap.set(iconRef.current, { opacity: isClicked ? 0 : 0.35, scaleX: ICON_SCALE, scaleY: ICON_SCALE }); 
+      gsap.set(iconRef.current, { opacity: isClicked ? 0 : 0.35, scaleX: ICON_SCALE, scaleY: ICON_SCALE, transformOrigin: "50% 50%" }); 
       if (captionRef.current) {
         gsap.set(captionRef.current, { opacity: isClicked ? 1 : 0, y: isClicked ? size + 25 : size + 10 });
       }
@@ -172,7 +172,7 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
     gsap.set(mainGroupRef.current, { scaleX: 0, scaleY: 0, opacity: 0 });
     gsap.set(inkSpreadRef.current, { innerRadius: 0, outerRadius: size });
     gsap.set(imageRef.current, { opacity: 0 });
-    gsap.set(iconRef.current, { opacity: 0, scaleX: ICON_SCALE, scaleY: ICON_SCALE }); 
+    gsap.set(iconRef.current, { opacity: 0, scaleX: ICON_SCALE, scaleY: ICON_SCALE, transformOrigin: "50% 50%" }); 
     if (captionRef.current) gsap.set(captionRef.current, { opacity: 0, y: size + 10 });
 
     const tl = gsap.timeline({ delay });
@@ -193,7 +193,7 @@ export const useInkAnimation = (id: string, color: string, size: number, delay: 
         }
       } 
     });
-    tl.to(iconRef.current, { opacity: 0.35, duration: 1.2, ease: "power2.inOut" }, 2.0);
+    tl.to(iconRef.current, { opacity: 0.35, duration: 1.2, ease: "power2.inOut", transformOrigin: "50% 50%" }, 2.0);
     tl.to(mainProgressRef.current, { 
       scale: 1, 
       duration: 2.5, 

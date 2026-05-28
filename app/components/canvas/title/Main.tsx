@@ -389,6 +389,7 @@ const Main = () => {
           {activeNodes.map(node => ( <InkFilter key={`filter-${node.id}`} id={node.id} /> ))}
         </svg>
 
+        {/* 1. 가상 절대 컨테이너 (배경 및 모든 레이어 통합) */}
         <div style={{ position: 'absolute', width: VIRTUAL_SIZE, height: VIRTUAL_SIZE, transform: `translate3d(${viewport.x}px, ${viewport.y}px, 0) scale(${viewport.scale})`, transformOrigin: '0 0', willChange: 'transform' }}>
           
           <div style={{ 
@@ -399,7 +400,8 @@ const Main = () => {
             imageRendering: 'high-quality' as any,
             opacity: 0.9 
           }} />
-          
+
+          {/* 연결선 Stage (5000x5000) */}
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', filter: 'url(#crayon-texture)', zIndex: 10 }}>
             <Stage width={VIRTUAL_SIZE} height={VIRTUAL_SIZE}><Layer>
               {links.map((link, idx) => {
@@ -410,13 +412,12 @@ const Main = () => {
               })}
             </Layer></Stage>
           </div>
-
+          
+          {/* 가이드 노드 플레이스홀더 (Stage 래퍼 제거하고 순수 SVG 컴포넌트로 직접 렌더링) */}
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 20 }}>
             {(!activeIds.includes('root') || fadingIds.includes('root')) && (
               <div style={{ position: 'absolute', left: PORTFOLIO_MAP.root.x - 55, top: PORTFOLIO_MAP.root.y - 55, width: 110, height: 110, filter: 'url(#crayon-texture)', pointerEvents: isDraggingActive ? 'none' : 'auto', borderRadius: '50%' }}>
-                <Stage width={110} height={110}><Layer listening={!isDraggingActive && !fadingIds.includes('root')}>
-                  <NodePlaceholder x={55} y={55} color={PORTFOLIO_MAP.root.color || '#333333'} iconType={PORTFOLIO_MAP.root.icon} targetDelay={0 + (nodeDelays['root'] ?? 0)} onClick={() => handleExpandNode(null, 'root')} isFading={fadingIds.includes('root')} isDraggingActive={isDraggingActive} isAutoExploring={isAutoExploring} isRestored={isRestoredRef.current} />
-                </Layer></Stage>
+                <NodePlaceholder x={55} y={55} color={PORTFOLIO_MAP.root.color || '#333333'} iconType={PORTFOLIO_MAP.root.icon} targetDelay={0 + (nodeDelays['root'] ?? 0)} onClick={() => handleExpandNode(null, 'root')} isFading={fadingIds.includes('root')} isDraggingActive={isDraggingActive} isAutoExploring={isAutoExploring} isRestored={isRestoredRef.current} />
               </div>
             )}
             {activeNodes.map(parentNode => parentNode.children.map(childId => {
@@ -427,14 +428,13 @@ const Main = () => {
 
               return (
                 <div key={`placeholder-${childId}`} style={{ position: 'absolute', left: targetData.x - 55, top: targetData.y - 55, width: 110, height: 110, filter: 'url(#crayon-texture)', pointerEvents: isDraggingActive ? 'none' : 'auto', borderRadius: '50%' }}>
-                  <Stage width={110} height={110}><Layer listening={!isDraggingActive && !fadingIds.includes(childId)}>
-                    <NodePlaceholder x={55} y={55} color={targetData.color || '#333333'} iconType={targetData.icon} targetDelay={1.8 + parentDelay} onClick={() => handleExpandNode(parentNode.id, childId)} isFading={fadingIds.includes(childId)} isDraggingActive={isDraggingActive} isAutoExploring={isAutoExploring} isRestored={isRestoredRef.current} />
-                  </Layer></Stage>
+                  <NodePlaceholder x={55} y={55} color={targetData.color || '#333333'} iconType={targetData.icon} targetDelay={1.8 + parentDelay} onClick={() => handleExpandNode(parentNode.id, childId)} isFading={fadingIds.includes(childId)} isDraggingActive={isDraggingActive} isAutoExploring={isAutoExploring} isRestored={isRestoredRef.current} />
                 </div>
               );
             }))}
           </div>
 
+          {/* 노드 본체 (InkSpread) */}
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 30 }}>
             {activeNodes.map(node => {
               const size = node.size ?? 85, STAGE_SIZE = size * 5;
@@ -459,6 +459,7 @@ const Main = () => {
             })}
           </div>
 
+          {/* 물방울 낙하 Stage (5000x5000) */}
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 40 }}>
             <Stage width={VIRTUAL_SIZE} height={VIRTUAL_SIZE}><Layer>
               {!isRestoredRef.current && activeNodes.map(node => {
@@ -467,6 +468,7 @@ const Main = () => {
               })}
             </Layer></Stage>
           </div>
+
         </div>
       </div>
 
@@ -479,7 +481,7 @@ const Main = () => {
         isRestored={isRestored}
       />
 
-      <Dashboard selectedNode={selectedNode} dashboardPos={dashboardPos} onClose={handleCloseDashboard} isRestored={isRestored} viewport={viewport} />
+      <Dashboard selectedNode={selectedNode} dashboardPos={dashboardPos} onClose={handleCloseDashboard} isRestored={isRestored} getViewport={() => viewportRef.current} />
 
       <MiniMap viewport={viewport} setViewport={setViewport} activeIds={activeIds} links={links} isAutoExploring={isAutoExploring} onAutoExplore={handleAutoExplore} />
     </>

@@ -33,7 +33,7 @@ export const lightenColor = (hex: string, factor = 0.85) => {
   return `rgb(${lr}, ${lg}, ${lb})`;
 };
 
-const SidebarNode: React.FC<SidebarNodeProps> = (props) => {
+const SidebarNode: React.FC<SidebarNodeProps> = React.memo((props) => {
   const { 
     nodeId, parentId, depth, activeIds, expandedNodes, setExpandedNodes, 
     onExpandNode, onMoveCameraOnly, onNodeDoubleClick, isAutoExploring, triggerMovementShield
@@ -220,6 +220,6 @@ const SidebarNode: React.FC<SidebarNodeProps> = (props) => {
       )}
     </div>
   );
-};
+});
 
 export default SidebarNode;

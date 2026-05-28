@@ -12,7 +12,7 @@ interface SidebarProps {
   isRestored?: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = (props) => {
+const Sidebar: React.FC<SidebarProps> = React.memo((props) => {
   const { isAutoExploring, isRestored } = props;
   const [isOpen, setIsOpen] = useState(() => {
     if (typeof window !== 'undefined' && props.isRestored) {
@@ -230,6 +230,6 @@ const Sidebar: React.FC<SidebarProps> = (props) => {
       `}</style>
     </>
   );
-};
+});
 
 export default Sidebar;

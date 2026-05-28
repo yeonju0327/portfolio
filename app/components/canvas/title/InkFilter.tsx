@@ -5,7 +5,7 @@ const InkFilter = React.memo(({ id }: { id: string }) => (
     <feTurbulence
       type="fractalNoise"
       baseFrequency="0.05"
-      numOctaves="4"
+      numOctaves="2"
       result="noise"
     />
     <feDisplacementMap

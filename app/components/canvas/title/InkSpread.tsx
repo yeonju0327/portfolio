@@ -1,5 +1,5 @@
 import React, { useMemo, useRef } from "react";
-import { Stage, Layer, Group, Ring, Image as KonvaImage, Text, Path } from "react-konva";
+import { Stage, Layer, Group, Ring, Image as KonvaImage } from "react-konva";
 import useImage from "use-image";
 import { NodeProps } from "./types";
 import { useInkAnimation } from "./useInkAnimation"; 
@@ -21,7 +21,6 @@ const InkSpread: React.FC<ExtendedProps> = React.memo(
     
     const disableInteraction = isDraggingActive || isAutoExploring;
     
-    // ✨ useInkAnimation 훅은 Main에서 즉시 전달받은 isSelected를 통해 클릭 직후 강력한 상태 락(Lock)을 가집니다.
     const { refs, handlers, isReadyRef, ICON_SCALE, rgb } = useInkAnimation(id, color, size, delay, disableInteraction, isSelected, isRestored);
     const [image] = useImage(img);
 
@@ -53,6 +52,7 @@ const InkSpread: React.FC<ExtendedProps> = React.memo(
 
         <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, pointerEvents: 'none' }}>
           
+          {/* Stage 1: 이미지 클리핑 & 잉크 스프레드 (Konva) */}
           <div ref={refs.filterLayerRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', filter: `url(#ink-bleed-${id})`, pointerEvents: 'none' }}>
             <Stage width={stageSize} height={stageSize}><Layer listening={false}>
               <Group x={x} y={y}>
@@ -66,22 +66,38 @@ const InkSpread: React.FC<ExtendedProps> = React.memo(
             </Layer></Stage>
           </div>
 
+          {/* Stage 2 대체: 순수 SVG 아이콘 */}
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', filter: 'url(#crayon-texture)', pointerEvents: 'none' }}>
-            <Stage width={stageSize} height={stageSize}><Layer listening={false}>
-              <Group x={x} y={y}>
-                <Group ref={refs.iconRef} x={0} y={0} opacity={0} scaleX={ICON_SCALE} scaleY={ICON_SCALE} listening={false}>
-                  <Path data={iconPathData} stroke="rgba(255, 255, 255, 0.9)" strokeWidth={3} lineCap="round" lineJoin="round" />
-                </Group>
-              </Group>
-            </Layer></Stage>
+            <svg width={stageSize} height={stageSize} style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', overflow: 'visible' }}>
+              <g transform={`translate(${x}, ${y})`}>
+                <g ref={refs.iconRef} style={{ transformOrigin: 'center center' }}>
+                  <path d={iconPathData} stroke="rgba(255, 255, 255, 0.9)" strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                </g>
+              </g>
+            </svg>
           </div>
 
-          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-            <Stage width={stageSize} height={stageSize}><Layer>
-              <Group x={x} y={y}>
-                {caption && ( <Text ref={refs.captionRef} text={caption} x={0} y={size + 10} offsetX={100} width={200} align="center" fill="#333333" fontSize={16} fontStyle="bold" fontFamily="'Noto Sans KR', sans-serif" opacity={0} listening={false} /> )}
-              </Group>
-            </Layer></Stage>
+          {/* Stage 3 대체: 순수 HTML 텍스트 캡션 */}
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+            <div style={{ position: 'absolute', left: `${x}px`, top: `${y}px`, width: '200px', transform: 'translateX(-50%)', pointerEvents: 'none', display: 'flex', justifyContent: 'center' }}>
+              {caption && (
+                <div 
+                  ref={refs.captionRef}
+                  style={{
+                    textAlign: 'center',
+                    color: '#333333',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    fontFamily: "'Noto Sans KR', sans-serif",
+                    opacity: 0,
+                    pointerEvents: 'none',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {caption}
+                </div>
+              )}
+            </div>
           </div>
 
         </div>
@@ -103,7 +119,6 @@ const InkSpread: React.FC<ExtendedProps> = React.memo(
             }
           }}
           onClick={(e) => {
-            // ✨ 이벤트 버블링 방지 및 확실한 클릭 전달 보장
             e.stopPropagation();
             if (!disableInteraction && isReadyRef.current) {
               onNodeClick?.(id);
