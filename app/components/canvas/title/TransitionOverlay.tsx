@@ -6,7 +6,7 @@ import { useTransitionContext } from '../../../context/TransitionContext';
 import { usePathname } from 'next/navigation';
 
 export const TransitionOverlay: React.FC = () => {
-  const { isTransitioning, type, color, imgUrl, radius, imageRadius, centerPos, resetTransition } = useTransitionContext();
+  const { isTransitioning, type, color, imgUrl, radius, imageRadius, centerPos, resetTransition, isBackTransition } = useTransitionContext();
   const pathname = usePathname();
   
   // 마스크와 테두리 요소의 참조
@@ -40,8 +40,6 @@ export const TransitionOverlay: React.FC = () => {
   const shouldRestore = typeof window !== 'undefined' ? (sessionStorage.getItem('portfolio_should_restore') === 'true') : false;
   const isMainPage = pathname === '/';
   const isReturningTransition = isMainPage && shouldRestore && (type === 'out' || type === null);
-
-  const isBackTransition = (type === 'out' && pathname !== '/');
   
   // ⚠️ [임시 노드 생성/삭제 타이밍 제약]: 화면이 완전히 덮인 수축 상태(in) 혹은 상세 진입 시작(out) 시점에만 임시 노드를 활성화
   const showNode = (type === 'in') || (type === 'out' && !isBackTransition);

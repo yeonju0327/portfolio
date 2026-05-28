@@ -1,6 +1,6 @@
 'use client'; 
 
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { Stage, Layer } from 'react-konva';
 import { gsap } from 'gsap'; 
 import InkFilter from './InkFilter';
@@ -17,6 +17,8 @@ import { useTransitionContext } from '../../../context/TransitionContext';
 import { getEdgePoints } from './utils';
 
 const VIRTUAL_SIZE = 4000;
+
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 const Main = () => {
   const { playInTransition } = useTransitionContext();
@@ -120,7 +122,7 @@ const Main = () => {
   }, [focusedNodeId]);
 
   // 마운트 시 대시보드 포커스 복원 및 복원 플래그 소모 (없을 시 일괄 삭제)
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (typeof window === 'undefined') return;
     
     if (isRestoredRef.current) {
