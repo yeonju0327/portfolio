@@ -1,6 +1,6 @@
 import { NodeProps } from './types';
 
-const VIRTUAL_SIZE = 4000;
+const VIRTUAL_SIZE = 5000;
 export const CENTER = VIRTUAL_SIZE / 2;
 
 export type RawNodeData = {

@@ -16,7 +16,7 @@ import { PORTFOLIO_MAP, CENTER, MapData, RAW_TREE } from './data';
 import { useTransitionContext } from '../../../context/TransitionContext';
 import { getEdgePoints } from './utils';
 
-const VIRTUAL_SIZE = 4000;
+const VIRTUAL_SIZE = 5000;
 
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
@@ -372,17 +372,17 @@ const Main = () => {
       <div onMouseDown={handleMouseDown} style={{ width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: '#e5e5e5', position: 'relative', userSelect: 'none', pointerEvents: isAutoExploring ? 'none' : 'auto' }}>
         <svg width="0" height="0" style={{ position: 'absolute', zIndex: -1 }}>
           <filter id="crayon-texture" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
-            <feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="3" result="noise" />
+            <feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="2" result="noise" />
             <feDisplacementMap in="SourceGraphic" in2="noise" scale="15" xChannelSelector="R" yChannelSelector="G" />
           </filter>
           {/* ✨ 테두리의 찢어진 종이 질감 연출을 위한 필터 */}
           <filter id="static-paper-edge" x="-10%" y="-10%" width="140%" height="140%" colorInterpolationFilters="sRGB">
-            <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="5" result="paper-noise" />
+            <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" result="paper-noise" />
             <feDisplacementMap in="SourceGraphic" in2="paper-noise" scale="5.5" xChannelSelector="R" yChannelSelector="G" />
           </filter>
           {/* ✨ 손글씨 잉크 번짐 질감 연출을 위한 필터 */}
           <filter id="handwriting-ink" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
-            <feTurbulence type="fractalNoise" baseFrequency="0.2" numOctaves="3" result="ink-noise" />
+            <feTurbulence type="fractalNoise" baseFrequency="0.2" numOctaves="2" result="ink-noise" />
             <feDisplacementMap in="SourceGraphic" in2="ink-noise" scale="1.5" xChannelSelector="R" yChannelSelector="G" result="displaced" />
             <feGaussianBlur in="displaced" stdDeviation="0.4" />
           </filter>

@@ -11,7 +11,7 @@ interface MiniMapProps {
   onAutoExplore: () => void;
 }
 
-const VIRTUAL_SIZE = 4000;
+const VIRTUAL_SIZE = 5000;
 const MAP_SIZE = 240; // 미니맵 크기 대폭 확장 (180px -> 240px)
 
 // ✨ [성능 최적화 #7] React.memo 적용 → viewport외 prop 변경 시에만 재렌더링
