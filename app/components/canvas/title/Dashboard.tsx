@@ -41,8 +41,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ selectedNode, dashboar
   // ✨ displayNode/displayPos: 닫기 애니메이션 중에도 마지막 데이터를 표시하기 위해 내부적으로 캐싱
   const [displayNode, setDisplayNode] = React.useState<MapData[string] | null>(selectedNode);
   const [displayPos, setDisplayPos] = React.useState<'left' | 'right' | 'top' | null>(dashboardPos);
-  // Track if close was triggered manually to invoke onClose after animation
-  const [isManualClose, setIsManualClose] = React.useState(false);
 
   const leaveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -66,9 +64,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ selectedNode, dashboar
     } else if (!selectedNode && prevNode) {
       // ── 외부 닫기 (non-null -> null) ──
       if (animState !== 'leaving' && animState !== 'hidden') {
-        // Trigger closing animation; onClose will be handled separately if manual
+        // Trigger closing animation
         setAnimState('leaving');
-        // No timer; CSS transitions handle animation
       }
     }
   }, [selectedNode, dashboardPos, isRestored, animState]);
@@ -88,20 +85,31 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ selectedNode, dashboar
     if (animState === 'leaving') {
       const timer = setTimeout(() => {
         setAnimState('hidden');
-        if (isManualClose) {
-          onClose();
-          setIsManualClose(false);
-        }
       }, ANIM_DURATION * 1000);
       return () => clearTimeout(timer);
     }
-  }, [animState, isManualClose, onClose]);
+  }, [animState]);
 
-  // 닫기 핸들러: 슬라이드아웃 재생 → 600ms 후 실제 onClose 호출
+  // Ensure hover styles are cleared immediately when leaving starts
+  React.useEffect(() => {
+    if (animState === 'leaving') {
+      const container = document.querySelector('.paper-dashboard-container');
+      if (container) {
+        const elems = container.querySelectorAll<HTMLElement>('[style]');
+        elems.forEach(el => {
+          el.style.color = '';
+          el.style.transform = '';
+          el.style.boxShadow = '';
+        });
+      }
+    }
+  }, [animState]);
+
+  // 닫기 핸들러: 슬라이드아웃 재생 시작 및 즉시 onClose 호출하여 노드 포커스 해제
   const handleClose = React.useCallback(() => {
     if (animState === 'leaving' || animState === 'hidden') return;
-    setIsManualClose(true);
     setAnimState('leaving');
+    onClose();
   }, [animState, onClose]);
 
   // 언마운트 시 타이머 정리
