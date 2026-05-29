@@ -1,5 +1,4 @@
 import React from 'react';
-import { gsap } from 'gsap';
 import Link from 'next/link';
 import { MapData } from './data';
 import { CustomScrollContainer } from './CustomScrollContainer';
@@ -29,7 +28,7 @@ type AnimState = 'hidden' | 'entering' | 'visible' | 'leaving';
 const Dashboard: React.FC<DashboardProps> = React.memo(({ selectedNode, dashboardPos, onClose, isRestored, getViewport }) => {
   const { startTransition } = useTransitionContext();
 
-  const ANIM_DURATION = 0.6; // seconds
+  const ANIM_DURATION = 0.8; // seconds (0.8s CSS 애니메이션과 싱크 일치)
   // ✨ animState: 대시보드의 생명주기를 단일 상태로 관리
   const [animState, setAnimState] = React.useState<AnimState>(() => {
     // 초기값: selectedNode가 있으면(복원) 바로 visible, 없으면 hidden
@@ -69,42 +68,34 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ selectedNode, dashboar
       if (animState !== 'leaving' && animState !== 'hidden') {
         // Trigger closing animation; onClose will be handled separately if manual
         setAnimState('leaving');
-        // No timer; GSAP will handle transition to hidden state
+        // No timer; CSS transitions handle animation
       }
     }
   }, [selectedNode, dashboardPos, isRestored, animState]);
 
-  // ── Dashboard opening animation (natural easing) ──
-  // Opening animation (already using GSAP)
+  // ── Dashboard entering state handler (CSS animation sync) ──
   React.useEffect(() => {
     if (animState === 'entering') {
-      gsap.fromTo(
-        '.paper-dashboard-container',
-        { x: 'calc(100% + 40px)', rotate: 2.5, opacity: 0 },
-        { x: 0, rotate: 0, opacity: 1, duration: ANIM_DURATION, ease: 'elastic.out(1, 0.4)', onComplete: () => setAnimState('visible') }
-      );
+      const timer = setTimeout(() => {
+        setAnimState('visible');
+      }, ANIM_DURATION * 1000);
+      return () => clearTimeout(timer);
     }
   }, [animState]);
 
-  // Closing animation with bounce effect
+  // ── Dashboard leaving state handler (CSS animation sync) ──
   React.useEffect(() => {
     if (animState === 'leaving') {
-      gsap.to('.paper-dashboard-container', {
-        x: 'calc(100% + 40px)',
-        rotate: 2.5,
-        opacity: 0,
-        duration: ANIM_DURATION,
-        ease: 'elastic.out(1, 0.4)',
-        onComplete: () => {
-          setAnimState('hidden');
-          if (isManualClose) {
-            onClose();
-            setIsManualClose(false);
-          }
-        },
-      });
+      const timer = setTimeout(() => {
+        setAnimState('hidden');
+        if (isManualClose) {
+          onClose();
+          setIsManualClose(false);
+        }
+      }, ANIM_DURATION * 1000);
+      return () => clearTimeout(timer);
     }
-  }, [animState]);
+  }, [animState, isManualClose, onClose]);
 
   // 닫기 핸들러: 슬라이드아웃 재생 → 600ms 후 실제 onClose 호출
   const handleClose = React.useCallback(() => {
@@ -131,20 +122,14 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ selectedNode, dashboar
 
   return (
     <>
-      <style>{`
-        .dashboard-leaving {
-          animation: memoSlideOut 0.6s cubic-bezier(0.4, 0, 1, 1) forwards !important;
-        }
-        @keyframes memoSlideOut {
-          0% { transform: translateX(0) rotate(0deg); opacity: 1; }
-          100% { transform: translateX(calc(100% + 40px)) rotate(2.5deg); opacity: 0; }
-        }
-      `}</style>
-      {/* 바깥 여백 클릭 시 닫기 */}
-      <div 
-        style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1999, backgroundColor: 'transparent', cursor: 'alias' }} 
-        onClick={handleClose} 
-      />
+
+      {/* 바깥 여백 클릭 시 닫기 (닫기 시작하는 순간 캔버스 상호작용을 허용하기 위해 leaving 시점엔 즉시 렌더링 제거) */}
+      {animState !== 'leaving' && (
+        <div 
+          style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1999, backgroundColor: 'transparent', cursor: 'alias' }} 
+          onClick={handleClose} 
+        />
+      )}
 
       <div 
         className={`paper-dashboard-container dashboard-${animState}`}
@@ -154,7 +139,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ selectedNode, dashboar
           pointerEvents: 'none' 
         }}
       >
-        {/* 플레이트 1: 그라데이션과 찢어진 테두리(filter) 적용 */}
+        {/* 플레이트 1: 그라데이션과 찢어진 테두리(filter) 적용 (leaving 시점엔 캔버스 관통을 위해 pointerEvents 비활성화) */}
         <div
           style={{
             position: 'absolute',
@@ -162,7 +147,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ selectedNode, dashboar
             backgroundImage: `linear-gradient(135deg, #FDFCF8 0%, #F4F0E6 100%)`, 
             boxShadow: 'inset 0 0 60px rgba(160, 155, 125, 0.15)',
             filter: 'url(#static-paper-edge) drop-shadow(-14px 18px 30px rgba(35, 35, 33, 0.15)) drop-shadow(-2px 4px 8px rgba(0, 0, 0, 0.06))',
-            pointerEvents: 'auto'
+            pointerEvents: animState === 'leaving' ? 'none' : 'auto'
           }}
         />
 
@@ -179,7 +164,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ selectedNode, dashboar
         <div
           style={{
             position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column',
-            padding: '76px 44px 52px 48px', pointerEvents: 'auto', height: '100%', overflow: 'hidden',
+            padding: '76px 44px 52px 48px', pointerEvents: animState === 'leaving' ? 'none' : 'auto', height: '100%', overflow: 'hidden',
             fontFamily: "'Nanum Pen Script', cursive" 
           }}
         >

@@ -104,7 +104,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo((props) => {
           top: '24px', 
           bottom: '24px', 
           height: 'auto', 
-          left: isOpen ? '24px' : '-350px', 
+          left: isOpen ? '24px' : '-365px', 
           width: '360px', 
           zIndex: 1500,
           transition: 'left 0.4s cubic-bezier(0.16, 1, 0.3, 1)',

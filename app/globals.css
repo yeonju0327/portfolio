@@ -167,7 +167,7 @@ html, body, * {
   animation: memoSlideIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 .dashboard-leaving {
-  animation: memoSlideOut 0.6s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+  animation: memoSlideOut 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 .dashboard-visible {
   animation: none !important;
@@ -177,6 +177,18 @@ html, body, * {
 }
 
 @media (max-width: 768px) {
+  .dashboard-entering {
+    animation: memoSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  }
+  .dashboard-leaving {
+    animation: memoSlideDown 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  }
+
+  @keyframes memoSlideDown {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100%) rotate(1deg); opacity: 0; }
+  }
+
   .paper-dashboard-container {
     left: 16px !important;
     right: 16px !important;
@@ -184,7 +196,6 @@ html, body, * {
     top: auto !important;
     width: auto !important;
     height: 62vh !important;
-    animation: memoSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
   }
 
   .paper-dashboard-container > div:first-child {
