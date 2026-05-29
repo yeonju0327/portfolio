@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import '../globals.css';
 import { useTransitionContext } from '../context/TransitionContext';
 
@@ -10,8 +10,12 @@ export default function WorksLayout({
   children: React.ReactNode;
 }) {
   const { playInDetailTransition } = useTransitionContext();
+  const hasPlayedRef = useRef(false);
 
   useEffect(() => {
+    if (hasPlayedRef.current) return;
+    hasPlayedRef.current = true;
+
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('portfolio_should_restore', 'true');
     }
