@@ -3,13 +3,11 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { GlitchPass } from 'three/examples/jsm/postprocessing/GlitchPass.js';
 import { ChromaticAberrationShader } from './shaders';
 
 export interface PostProcessingResult {
   composer: EffectComposer;
   chromaPass: ShaderPass;
-  glitchPass: GlitchPass;
   dispose: () => void;
 }
 
@@ -42,14 +40,9 @@ export function createPostProcessing(
   const chromaPass = new ShaderPass(ChromaticAberrationShader);
   composer.addPass(chromaPass);
 
-  // 글리치 패스 (패배 시 지지직 노이즈 연출, 기본 비활성)
-  const glitchPass = new GlitchPass();
-  glitchPass.enabled = false;
-  composer.addPass(glitchPass);
-
   const dispose = () => {
     composer.dispose();
   };
 
-  return { composer, chromaPass, glitchPass, dispose };
+  return { composer, chromaPass, dispose };
 }

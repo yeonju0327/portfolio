@@ -131,6 +131,71 @@ class SoundManager {
     noiseSource.start(now);
     noiseSource.stop(now + 0.03);
   }
+
+  // 4. 유리가 깨질 때의 쨍그랑하는 파편 소리 합성 (Glass Shattering Sound)
+  public playShatter() {
+    this.resumeContext();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const duration = 0.65; // 전체 지속 시간
+
+    // 4-1. 여러 개의 고주파 오실레이터로 유리 파편의 맑은 공명 연출
+    const frequencies = [1500, 2200, 3100, 4300, 5200];
+    frequencies.forEach((freq, idx) => {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gainNode = this.ctx.createGain();
+
+      osc.type = 'sine';
+      // 무작위 피치 변동으로 부서진 유리 느낌 강조
+      const pitchJitter = (Math.random() - 0.5) * 200;
+      osc.frequency.setValueAtTime(freq + pitchJitter, now);
+      osc.frequency.exponentialRampToValueAtTime((freq + pitchJitter) * 0.7, now + duration);
+
+      // 개별 파편들의 볼륨 엔벨로프 (각 파편마다 무작위 감쇄 속도 적용)
+      const maxVolume = 0.04 + Math.random() * 0.04;
+      const decayTime = 0.15 + Math.random() * (duration - 0.2);
+
+      gainNode.gain.setValueAtTime(maxVolume, now);
+      gainNode.gain.linearRampToValueAtTime(maxVolume * 0.8, now + 0.02); // 어택 피크
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + decayTime);
+
+      osc.connect(gainNode);
+      gainNode.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + decayTime);
+    });
+
+    // 4-2. 파쇄 노이즈 어택 (유리창이 찢어지며 와장창하는 크랙 사운드)
+    const bufferSize = this.ctx.sampleRate * duration;
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      // 거친 파쇄음을 위해 노이즈 생성
+      data[i] = Math.random() * 2 - 1;
+    }
+    const noiseSource = this.ctx.createBufferSource();
+    noiseSource.buffer = buffer;
+
+    const noiseFilter = this.ctx.createBiquadFilter();
+    noiseFilter.type = 'highpass'; // 맑은 고주파 깨짐 소리를 위해 하이패스 필터 사용
+    noiseFilter.frequency.setValueAtTime(2500, now);
+    noiseFilter.frequency.exponentialRampToValueAtTime(800, now + duration);
+
+    const gainNoise = this.ctx.createGain();
+    gainNoise.gain.setValueAtTime(0.12, now);
+    gainNoise.gain.linearRampToValueAtTime(0.06, now + 0.05); // 어택 직후 감쇄
+    gainNoise.gain.exponentialRampToValueAtTime(0.001, now + duration); // 천천히 소멸
+
+    noiseSource.connect(noiseFilter);
+    noiseFilter.connect(gainNoise);
+    gainNoise.connect(this.ctx.destination);
+
+    noiseSource.start(now);
+    noiseSource.stop(now + duration);
+  }
 }
 
 // 싱글톤 인스턴스로 내보냄

@@ -9,10 +9,11 @@ import { createPostProcessing } from './three/PostProcessing';
 import { loadEnvironment, disposeEnvironment, EnvironmentRefs } from './three/EnvironmentLoader';
 import { createTableObjects } from './three/TableObjects';
 import { createCardGeometry, createCardMaterial } from './three/CardBuilder';
-import { animateHand, removeStaleCards } from './three/CardAnimator';
+import { animateHand, removeStaleCards, shatterCard, clearShatteredCards } from './three/CardAnimator';
 import { createHoverInteraction } from './three/HoverInteraction';
 import LoadingOverlay from './LoadingOverlay';
 import { useTransitionContext } from '../../../context/TransitionContext';
+import { calculateHandScore } from '../logic/BlackjackEngine';
 
 interface BlackjackCanvasProps {
   playerHand: Card[];
@@ -162,6 +163,11 @@ export default function BlackjackCanvas({
     dealerHand.forEach((c) => activeIds.add(`D_${c.id}`));
     removeStaleCards(activeIds, cardsMap, scene);
 
+    // 라운드가 재시작되어 핸드가 완전히 비어있을 때 테이블 위의 모든 깨진 카드 파편 제거
+    if (playerHand.length === 0 && dealerHand.length === 0) {
+      clearShatteredCards(scene);
+    }
+
     // 애니메이션 시작 콜백 트리거
     if (onAnimationStart) {
       onAnimationStart();
@@ -173,12 +179,46 @@ export default function BlackjackCanvas({
     const dealerPromises = animateHand(dealerHand, 'D', -1.6, cardsMap, scene, cardGeo, sideGlassMat);
 
     Promise.all([...playerPromises, ...dealerPromises]).then(() => {
-      // 모든 카드 애니메이션이 끝나면 완료 콜백 트리거
-      if (onAnimationComplete) {
-        onAnimationComplete();
+      // 딜링/뒤집기 애니메이션 완료 직후 버스트 여부 검사
+      const pScore = calculateHandScore(playerHand);
+      const dScore = calculateHandScore(dealerHand);
+      const shatterPromises: Promise<void>[] = [];
+
+      // 플레이어 버스트 시 딜러 카드가 먼저 다 뒤집혀 오픈(stage === 'RESOLVED')된 이후에 비로소 카드를 깨뜨림
+      if (pScore > 21 && playerHand.length > 0 && stage === 'RESOLVED') {
+        const lastCard = playerHand[playerHand.length - 1];
+        const cardId = `P_${lastCard.id}`;
+        const group = cardsMap.get(cardId);
+        if (group && !group.userData.hasShattered) {
+          group.userData.hasShattered = true;
+          shatterPromises.push(shatterCard(group, scene));
+        }
+      }
+
+      if (dScore > 21 && dealerHand.length > 0) {
+        const lastCard = dealerHand[dealerHand.length - 1];
+        const cardId = `D_${lastCard.id}`;
+        const group = cardsMap.get(cardId);
+        if (group && !group.userData.hasShattered) {
+          group.userData.hasShattered = true;
+          shatterPromises.push(shatterCard(group, scene));
+        }
+      }
+
+      // 유리 조각 비산(Shattering) 효과가 있으면 완료를 대기한 후 UI 락 해제
+      if (shatterPromises.length > 0) {
+        Promise.all(shatterPromises).then(() => {
+          if (onAnimationComplete) {
+            onAnimationComplete();
+          }
+        });
+      } else {
+        if (onAnimationComplete) {
+          onAnimationComplete();
+        }
       }
     });
-  }, [playerHand, dealerHand]);
+  }, [playerHand, dealerHand, stage]);
 
   // ─────────────────────────────────────────────
   // Effect 3: 승패 포스트 프로세싱 제어
@@ -186,7 +226,7 @@ export default function BlackjackCanvas({
   useEffect(() => {
     const pp = composerRef.current;
     if (!pp) return;
-    const { chromaPass, glitchPass } = pp;
+    const { chromaPass } = pp;
 
     if (winner === 'player') {
       // 플레이어 승리: 레인보우 색수차 프리즘 효과
@@ -195,17 +235,10 @@ export default function BlackjackCanvas({
       gsap.timeline()
         .to(chromaPass.uniforms.uAmount, { value: 0.035, duration: 0.3, ease: 'power2.out' })
         .to(chromaPass.uniforms.uAmount, { value: 0.0, duration: 1.5, ease: 'power1.inOut' });
-    } else if (winner === 'dealer') {
-      // 딜러 승리: 지지직거리는 화면 결함(Glitch)
-      glitchPass.enabled = true;
-      glitchPass.goWild = false;
-      const timer = setTimeout(() => { glitchPass.enabled = false; }, 950);
-      return () => clearTimeout(timer);
     } else {
-      // 무승부 또는 게임 진행 중: 모든 효과 초기화
+      // 무승부, 패배(버스트 포함) 또는 게임 진행 중: 모든 효과 초기화 (글리치 노이즈 완전 제거)
       gsap.killTweensOf(chromaPass.uniforms.uAmount);
       chromaPass.uniforms.uAmount.value = 0.0;
-      glitchPass.enabled = false;
     }
   }, [winner, stage]);
 
