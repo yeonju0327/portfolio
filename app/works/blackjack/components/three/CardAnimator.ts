@@ -3,10 +3,10 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { gsap } from 'gsap';
 import { Card } from '../../hooks/useBlackjack';
 import { soundManager } from '../../logic/SoundManager';
-import { buildCardGroup } from './CardBuilder';
+import { buildCardGroup, CARD_WIDTH, CARD_THICKNESS } from './CardBuilder';
 
 /** 덱 더미 오브젝트와 동일한 위치 — 카드 딜링 시작 스폰 지점 */
-export const DECK_SPAWN = { x: 3.5, y: 1.0, z: -3.2 } as const;
+export const DECK_SPAWN = { x: 4.2, y: 1.0, z: 0.0 } as const;
 
 /**
  * 플레이어 또는 딜러 핸드를 씬에 반영합니다.
@@ -32,28 +32,63 @@ export function animateHand(
   sideGlassMat: THREE.MeshPhysicalMaterial
 ): void {
   const totalCount = hand.length;
-  const spacing = 0.52;
-  const startX = -((totalCount - 1) * spacing) / 2;
   const isDealer = prefix === 'D';
+
+  // 비균등 스페이싱 규격 정의 (1번째-2번째 간격은 넓게 0.82로 우측 이동, 이후 간격은 0.54)
+  const s1 = 0.82; 
+  const sRest = 0.54;
+
+  // 전체 스택 가로폭 계산 후 중앙 정렬을 위한 시작 X 좌표(startX) 산출
+  let totalWidth = 0;
+  if (totalCount === 2) {
+    totalWidth = s1;
+  } else if (totalCount >= 3) {
+    totalWidth = s1 + (totalCount - 2) * sRest;
+  }
+  const startX = -totalWidth / 2;
 
   hand.forEach((card, index) => {
     const cardId = `${prefix}_${card.id}`;
     let cardGroup = cardsMap.get(cardId);
 
-    // 목표 Transform 계산
-    const targetX = startX + index * spacing;
-    const targetY = 0.03 + index * 0.035; // 두께감이 느껴지도록 Y 단차를 확실하게 포갬
-    // 첫 카드는 평평, 이후 카드는 왼쪽이 들리도록 Z축 음수 회전
-    const targetRotZ = index === 0 ? 0 : -0.07;
+    // 비균등 스페이싱을 누적 계산하여 인덱스별 정밀 X 좌표 적용
+    let targetX = startX;
+    if (index === 1) {
+      targetX = startX + s1;
+    } else if (index >= 2) {
+      targetX = startX + s1 + (index - 1) * sRest;
+    }
+
+    // 목표 Transform 계산 (첫 장은 평평, 두 번째 장부터 쓰러진 도미노 효과)
+    const isHiddenDealerCard = isDealer && card.isHidden;
+
+    let targetRotY = 0;
+    let targetRotZ = 0;
+    let targetY = CARD_THICKNESS / 2; // 첫 번째 카드는 평평하게 눕혀져 바닥에 밀착
+
+    if (index > 0) {
+      // 두 번째 카드부터 플레이어 관점에서 화면 오른쪽(월드 +X축)이 바닥에 닿도록 자연스러운 틸트 적용
+      // 물리적 비관통 조건(sin(theta) >= T/s)을 충족하는 임계 경사각 산정 (theta = 0.12 라디안, 약 6.8도)
+      const theta = 0.12; 
+      targetRotY = isHiddenDealerCard ? -theta : theta; // 좌우 방향 부호 보정
+      targetRotZ = 0; // 접지 모서리가 테이블에 완전히 밀착되도록 회전축 정렬
+      
+      // 카드가 바닥(Y=0)에 오른쪽 모서리가 닿게 하는 정확한 Y 중심 위치 계산
+      const baseHeight = (CARD_WIDTH / 2) * Math.sin(theta) - (CARD_THICKNESS / 2) * Math.cos(theta);
+      // 카드 간 겹침 렌더링 품질을 개선하고 z-fighting을 방지하기 위한 미세 단차 누적
+      targetY = baseHeight + (index - 1) * 0.005;
+    }
+
     const targetRotX = isDealer
-      ? (card.isHidden ? Math.PI / 2 : -Math.PI / 2) // 뒤집힘 유무에 따른 회전
+      ? (card.isHidden ? Math.PI / 2 : -Math.PI / 2)
       : -Math.PI / 2;
 
     if (!cardGroup) {
       // 신규 카드 딜링 — 덱 위치에서 스폰 후 목표 위치로 이동
       cardGroup = buildCardGroup(card, cardGeo, sideGlassMat);
       cardGroup.position.set(DECK_SPAWN.x, DECK_SPAWN.y, DECK_SPAWN.z);
-      cardGroup.rotation.set(Math.PI / 2, 0, Math.PI / 6); // 덱 위에 엎어져 기울어진 각도
+      // 덱 위에 뒤집혀서 약간 기울어진 스폰 각도
+      cardGroup.rotation.set(Math.PI / 2, 0, Math.PI / 6);
 
       scene.add(cardGroup);
       cardsMap.set(cardId, cardGroup);
@@ -74,19 +109,20 @@ export function animateHand(
       });
 
       gsap.to(cardGroup.rotation, {
-        x: targetRotX, y: 0, z: targetRotZ,
+        x: targetRotX, y: targetRotY, z: targetRotZ,
         duration: 0.7,
         delay: dealDelay,
         ease: 'power2.out',
       });
     } else {
-      // 기존 카드 — 목표 정렬 공식으로 위치 및 Z 회전 보정 (리렌더 튐 방지)
+      // 기존 카드 — 목표 정렬 공식으로 위치 및 회전 보정 (리렌더 튐 방지)
       gsap.to(cardGroup.position, {
         x: targetX, y: targetY, z: targetZ,
         duration: 0.3,
         ease: 'power2.out',
       });
       gsap.to(cardGroup.rotation, {
+        y: targetRotY,
         z: targetRotZ,
         duration: 0.3,
         ease: 'power2.out',
@@ -101,12 +137,14 @@ export function animateHand(
 
           gsap.to(cardGroup.rotation, {
             x: targetRotX,
+            y: targetRotY, // 뒤집히는 도중에도 도미노 Y축 회전 반영
             duration: 0.6,
             ease: 'back.out(1.2)', // 묵직하게 넘어가 튕기는 피드백
             onComplete: () => soundManager.playClink(),
           });
         } else {
           cardGroup.rotation.x = targetRotX;
+          cardGroup.rotation.y = targetRotY;
           const depthCore = cardGroup.getObjectByName('depthCore');
           if (depthCore) depthCore.visible = !!card.isHidden;
         }
@@ -117,6 +155,7 @@ export function animateHand(
     cardGroup.userData.originalX = targetX;
     cardGroup.userData.originalY = targetY;
     cardGroup.userData.originalRotX = targetRotX;
+    cardGroup.userData.originalRotY = targetRotY;
     cardGroup.userData.originalRotZ = targetRotZ;
     cardGroup.userData.index = index;
     cardGroup.userData.handLength = totalCount;

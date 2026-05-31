@@ -65,20 +65,34 @@ export function createHoverInteraction(
         const dx = intersectionPoint.x - groupPos.x;
         const dz = intersectionPoint.z - groupPos.z;
 
-        // Y 높이 들썩임 — 탑 카드만 0.25, 아래 카드는 0.04로 제한
-        const index = cardGroup.userData.index ?? 0;
-        const handLength = cardGroup.userData.handLength ?? 1;
-        const isTopCard = index === handLength - 1;
-        const liftAmount = isTopCard ? 0.25 : 0.04;
-
         const baseTargetY = cardGroup.userData.originalY ?? groupPos.y;
-        cardGroup.position.y = THREE.MathUtils.lerp(groupPos.y, baseTargetY + liftAmount, 0.15);
+        // 위아래 들썩임 모션을 제거하여 물리적 관통 방지
+        cardGroup.position.y = THREE.MathUtils.lerp(groupPos.y, baseTargetY, 0.15);
 
-        // 기울기 틸트 — 원래의 엇갈린 Z축 회전을 반영하여 x축, z축 미세 변동
+        // 기울어진 카드의 Y축 회전각을 반영하여 월드 오프셋을 로컬 오프셋(localDx, localDz)으로 역회전 변환
+        const rotY = cardGroup.rotation.y;
+        const cosY = Math.cos(-rotY);
+        const sinY = Math.sin(-rotY);
+        const localDx = dx * cosY - dz * sinY;
+        const localDz = dx * sinY + dz * cosY;
+
+        // X축 회전(끄덕임)은 원래 각도로 완전히 고정하여 관통 방지
         const origRotX = cardGroup.userData.originalRotX ?? -Math.PI / 2;
+        cardGroup.rotation.x = THREE.MathUtils.lerp(cardGroup.rotation.x, origRotX, 0.12);
+
+        // 네 모서리 터치 영역 판별에 따른 Z축 회전(평면 회전) 제어
+        // 왼쪽 위 / 오른쪽 아래 모서리 호버 시 반시계(왼쪽) 회전 (rotation.z 양수)
+        // 오른쪽 위 / 왼쪽 아래 모서리 호버 시 시계(오른쪽) 회전 (rotation.z 음수)
         const origRotZ = cardGroup.userData.originalRotZ ?? 0;
-        cardGroup.rotation.x = THREE.MathUtils.lerp(cardGroup.rotation.x, origRotX + dz * 0.15, 0.12);
-        cardGroup.rotation.z = THREE.MathUtils.lerp(cardGroup.rotation.z, origRotZ + dx * -0.15, 0.12);
+        
+        // 특정 축 경계 교사 시 회전이 튀지 않고 자연스럽게 감속 후 반전되도록 곱(localDx * localDz) 기반의 연속 함수식 사용
+        const clampX = THREE.MathUtils.clamp(localDx, -0.75, 0.75);
+        const clampZ = THREE.MathUtils.clamp(localDz, -1.1, 1.1);
+        
+        // 흔들림 세기를 자연스럽고 부드럽게 0.13 계수로 설정
+        const targetRotZOffset = clampX * clampZ * 0.13;
+
+        cardGroup.rotation.z = THREE.MathUtils.lerp(cardGroup.rotation.z, origRotZ + targetRotZOffset, 0.12);
       } else {
         restoreHoveredCard();
       }
