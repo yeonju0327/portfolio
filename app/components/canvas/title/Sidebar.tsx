@@ -166,11 +166,8 @@ const Sidebar: React.FC<SidebarProps> = React.memo((props) => {
         >
           <div style={{ padding: '24px 24px 20px 24px', borderBottom: '2px dashed rgba(255, 255, 255, 0.2)' }}>
             <h3 style={{ margin: 0, color: '#FDFCF8', fontSize: '2.2rem', letterSpacing: '0.02em', textShadow: '1px 1px 3px rgba(0,0,0,0.6)' }}>
-              MAP REPOSITORY
+              #0 GONGWON
             </h3>
-            <p style={{ margin: '6px 0 0 2px', fontSize: '1.2rem', color: '#E2DEC9', textShadow: '1px 1px 2px rgba(0,0,0,0.6)' }}>
-              인터랙티브 노드 인덱스 탐색기
-            </p>
           </div>
 
           <div style={{ display: 'flex', gap: '10px', padding: '16px 24px 0 24px', position: 'relative', zIndex: 10 }}>

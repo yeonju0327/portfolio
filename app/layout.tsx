@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "포트폴리오 | 인터랙티브 노드 맵",
+  title: "GONGWON",
   description: "AI학과 × 아트&테크놀로지 복수전공 포트폴리오",
 };
 

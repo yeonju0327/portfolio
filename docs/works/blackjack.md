@@ -1,12 +1,12 @@
-# #1_BlackJack (blackjack.md)
+# #1 BlackJack (blackjack.md)
 
-본 문서는 '아트&테크놀로지' 포트폴리오의 게임 프로젝트인 '#1_BlackJack(굴절 유리 카드 블랙잭)' 작업물의 전용 기술 명세서입니다. 기존 1번 페이지를 덮어씌워 `/works/blackjack` 경로로 구현됩니다.
+본 문서는 '아트&테크놀로지' 포트폴리오의 게임 프로젝트인 '#1 BlackJack(굴절 유리 카드 블랙잭)' 작업물의 전용 기술 명세서입니다. 기존 1번 페이지를 덮어씌워 `/works/blackjack` 경로로 구현됩니다.
 
 ---
 
 ## 1. 개요 및 경로 정보
 * **작업물 고유 ID:** `blackjack`
-* **프로젝트명:** #1_BlackJack
+* **프로젝트명:** #1 BlackJack
 * **라우트 경로:** `/works/blackjack` (파일 위치: [page.tsx](file:///c:/Users/SOGANG/portfolio/app/works/blackjack/page.tsx))
 * **디자인 컨셉:** 고전 카드 게임인 블랙잭을 두께감이 있는 투명하고 묵직한 유리 블록 메타포로 재해석하여 시각적이고 청각적인 물리 경험을 극대화한 인터랙티브 웹 아트.
 

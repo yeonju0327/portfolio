@@ -491,6 +491,30 @@ const Main = () => {
         isRestored={isRestored}
       />
 
+      {/* 메인 화면 플로팅 워터마크 로고 */}
+      <div 
+        style={{
+          position: 'fixed',
+          top: '24px',
+          right: '24px',
+          zIndex: 1000,
+          pointerEvents: 'none',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+        }}
+      >
+        <img 
+          src="/images/gongwon.png" 
+          alt="GONGWON Logo" 
+          style={{ 
+            height: '144px', 
+            objectFit: 'contain',
+            filter: 'drop-shadow(2px 3px 6px rgba(0,0,0,0.15))'
+          }} 
+        />
+      </div>
+
       <Dashboard selectedNode={selectedNode} dashboardPos={dashboardPos} onClose={handleCloseDashboard} isRestored={isRestored} getViewport={() => viewportRef.current} />
 
       <MiniMap viewport={viewport} setViewport={setViewport} activeIds={activeIds} links={links} isAutoExploring={isAutoExploring} onAutoExplore={handleAutoExplore} />
