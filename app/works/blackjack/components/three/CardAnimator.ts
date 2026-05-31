@@ -6,11 +6,12 @@ import { soundManager } from '../../logic/SoundManager';
 import { buildCardGroup, CARD_WIDTH, CARD_THICKNESS, opaqueBackMat } from './CardBuilder';
 
 /** 덱 더미 오브젝트와 동일한 위치 — 카드 딜링 시작 스폰 지점 */
-export const DECK_SPAWN = { x: 4.2, y: 1.0, z: 0.0 } as const;
+// 덱에 쌓인 16장의 윗면 표면 Y = 0.858 + 0.03 = 0.888. 그 위에 얹히는 카드의 중심 Y = 0.888 + 0.03 = 0.918 (약 0.92)
+export const DECK_SPAWN = { x: 4.2, y: 0.92, z: 0.0 } as const;
 
 /**
  * 플레이어 또는 딜러 핸드를 씬에 반영합니다.
- * - 신규 카드: 덱 스폰 지점에서 목표 위치로 GSAP 딜링 애니메이션
+ * - 신규 카드: 덱 스폰 지점에서 목표 위치로 GSAP 딜링 애니메이션 후 뒤집기
  * - 기존 카드: 목표 정렬 공식으로 부드럽게 위치 보정
  * - 딜러 홀 카드: isHidden 전환 시 뒤집기 애니메이션
  *
@@ -21,6 +22,7 @@ export const DECK_SPAWN = { x: 4.2, y: 1.0, z: 0.0 } as const;
  * @param scene      Three.js Scene
  * @param cardGeo    공유 카드 지오메트리
  * @param sideGlassMat 공유 카드 유리 재질
+ * @returns 각 카드의 애니메이션 완료 타이밍을 알 수 있는 Promise 배열
  */
 export function animateHand(
   hand: Card[],
@@ -30,7 +32,8 @@ export function animateHand(
   scene: THREE.Scene,
   cardGeo: RoundedBoxGeometry,
   sideGlassMat: THREE.MeshPhysicalMaterial
-): void {
+): Promise<void>[] {
+  const promises: Promise<void>[] = [];
   const totalCount = hand.length;
   const isDealer = prefix === 'D';
 
@@ -46,6 +49,25 @@ export function animateHand(
     totalWidth = s1 + (totalCount - 2) * sRest;
   }
   const startX = -totalWidth / 2;
+
+  // 이번 딜링에서 새로 날아가는 카드들의 동적 딜레이를 위한 인덱스 카운터
+  let newCardIndex = 0;
+
+  // 이번 턴에 딜러 홀 카드(isHidden: true -> false)가 오픈되는지 여부 판별
+  let isDealerRevealThisTurn = false;
+  if (isDealer) {
+    const revealedHoleCard = hand.find(c => !c.isHidden);
+    if (revealedHoleCard) {
+      const cardId = `${prefix}_${revealedHoleCard.id}`;
+      const group = cardsMap.get(cardId);
+      if (group) {
+        // 이미 씬에 존재하는데, rotation.x가 뒤집혀있던 상태(Math.PI / 2 근처)라면 이번에 뒤집히는 것
+        if (Math.abs(group.rotation.x - (-Math.PI / 2)) > 0.1) {
+          isDealerRevealThisTurn = true;
+        }
+      }
+    }
+  }
 
   hand.forEach((card, index) => {
     const cardId = `${prefix}_${card.id}`;
@@ -68,7 +90,6 @@ export function animateHand(
 
     if (index > 0) {
       // 두 번째 카드부터 플레이어 관점에서 화면 오른쪽(월드 +X축)이 바닥에 닿도록 자연스러운 틸트 적용
-      // 물리적 비관통 조건(sin(theta) >= T/s)을 충족하는 임계 경사각 산정 (theta = 0.12 라디안, 약 6.8도)
       const theta = 0.12; 
       targetRotY = isHiddenDealerCard ? -theta : theta; // 좌우 방향 부호 보정
       targetRotZ = 0; // 접지 모서리가 테이블에 완전히 밀착되도록 회전축 정렬
@@ -87,41 +108,108 @@ export function animateHand(
       // 신규 카드 딜링 — 덱 위치에서 스폰 후 목표 위치로 이동
       cardGroup = buildCardGroup(card, cardGeo, sideGlassMat);
       cardGroup.position.set(DECK_SPAWN.x, DECK_SPAWN.y, DECK_SPAWN.z);
-      // 덱 위에 뒤집혀서 약간 기울어진 스폰 각도
-      cardGroup.rotation.set(Math.PI / 2, 0, Math.PI / 6);
+      // 덱 위에 뒷면이 하늘을 보도록 완전히 평평한 상태로 초기화 (Math.PI / 2)
+      cardGroup.rotation.set(Math.PI / 2, 0, 0);
+
+      // 애니메이션 가드 활성화
+      cardGroup.userData.isAnimating = true;
+
+      // [핵심] 비행 중에는 유리의 투과성 때문에 앞면이 보이지 않도록 불투명 재질과 코어를 강제 활성화!
+      const cardBody = cardGroup.getObjectByName('cardBody') as THREE.Mesh;
+      if (cardBody) cardBody.material = opaqueBackMat;
+      const depthCore = cardGroup.getObjectByName('depthCore');
+      if (depthCore) depthCore.visible = true;
 
       scene.add(cardGroup);
       cardsMap.set(cardId, cardGroup);
 
-      const dealDelay = (card.dealOrder ?? index) * 0.22;
+      // 동적 딜레이 계산
+      let dealDelay = 0;
+      if (card.dealOrder !== undefined && card.dealOrder >= 0 && card.dealOrder < 4) {
+        // 초기 4장 분배 단계 (0.28초 간격으로 순차 분배)
+        dealDelay = card.dealOrder * 0.28;
+      } else {
+        // 추가 카드 분배 (Hit 또는 Stand 시의 딜러 추가 드로우)
+        if (isDealerRevealThisTurn) {
+          // 딜러 턴 전환으로 홀 카드가 먼저 뒤집히는 시간을 감안하여 딜레이 부여
+          dealDelay = 0.5 + newCardIndex * 0.38;
+        } else {
+          // 플레이어의 Hit인 경우 딜레이 없이 즉시 날아가게 함
+          dealDelay = newCardIndex * 0.38;
+        }
+      }
+      newCardIndex++;
 
       // 날아가기 전 슬라이딩 마찰음 트리거
       setTimeout(() => {
         soundManager.playSlide();
       }, dealDelay * 1000);
 
-      gsap.to(cardGroup.position, {
-        x: targetX, y: targetY, z: targetZ,
-        duration: 0.7,
-        delay: dealDelay,
-        ease: 'back.out(1.1)', // 묵직하게 쿵 튕기는 바닥 탄성 표현
-        onComplete: () => soundManager.playClink(), // 테이블 안착 시 유리 타격음
-      });
+      const p = new Promise<void>((resolve) => {
+        const targetGroup = cardGroup; // 클로저 스코프 안전성 확보
+        // 1. position 이동 (정확하게 흔들림 없이 power2.out)
+        gsap.to(targetGroup!.position, {
+          x: targetX, y: targetY, z: targetZ,
+          duration: 0.5,
+          delay: dealDelay,
+          ease: 'power2.out',
+          onComplete: () => {
+            // 테이블 안착음
+            soundManager.playClink();
 
-      gsap.to(cardGroup.rotation, {
-        x: targetRotX, y: targetRotY, z: targetRotZ,
-        duration: 0.7,
-        delay: dealDelay,
-        ease: 'power2.out',
+            // 2. 이동이 완료된 후에 뒤집기 (절대 덱 위에서 뒤집거나 이동 중에 뒤집지 않음)
+            if (!card.isHidden) {
+              gsap.to(targetGroup!.rotation, {
+                x: targetRotX,
+                y: targetRotY,
+                z: targetRotZ,
+                duration: 0.45,
+                ease: 'power2.out',
+                onStart: () => {
+                  // 뒤집기 시작할 때 비로소 투명 유리판 재질로 스위칭하고 불투명 코어를 비활성화!
+                  const body = targetGroup!.getObjectByName('cardBody') as THREE.Mesh;
+                  if (body) body.material = sideGlassMat;
+                  const core = targetGroup!.getObjectByName('depthCore');
+                  if (core) core.visible = false;
+                },
+                onComplete: () => {
+                  // 뒤집기 완료 시 소리 한 번 더 재생
+                  soundManager.playClink();
+                  targetGroup!.userData.isAnimating = false; // 가드 해제
+                  resolve();
+                }
+              });
+            } else {
+              // 딜러의 히든 카드는 뒤집지 않고, 틸트 효과만 부드럽게 먹임 (불투명 상태 유지)
+              gsap.to(targetGroup!.rotation, {
+                y: targetRotY,
+                z: targetRotZ,
+                duration: 0.3,
+                ease: 'power2.out',
+                onComplete: () => {
+                  targetGroup!.userData.isAnimating = false; // 가드 해제
+                  resolve();
+                }
+              });
+            }
+          }
+        });
       });
+      promises.push(p);
+
     } else {
-      // 기존 카드 — 목표 정렬 공식으로 위치 및 회전 보정 (리렌더 튐 방지)
-      gsap.to(cardGroup.position, {
+      // 만약 카드가 아직 비행/뒤집기 중이라면 덮어쓰기 보정 로직을 전면 스킵한다!
+      if (cardGroup.userData.isAnimating) {
+        return;
+      }
+
+      const existingGroup = cardGroup;
+      gsap.to(existingGroup.position, {
         x: targetX, y: targetY, z: targetZ,
         duration: 0.3,
         ease: 'power2.out',
       });
-      gsap.to(cardGroup.rotation, {
+      gsap.to(existingGroup.rotation, {
         y: targetRotY,
         z: targetRotZ,
         duration: 0.3,
@@ -130,28 +218,46 @@ export function animateHand(
 
       // 딜러 홀 카드가 뒤집히는 경우 (isHidden: true → false)
       if (isDealer) {
-        const currentRotX = cardGroup.rotation.x;
+        const currentRotX = existingGroup.rotation.x;
         if (Math.abs(currentRotX - targetRotX) > 0.1) {
-          const depthCore = cardGroup.getObjectByName('depthCore');
-          if (depthCore) depthCore.visible = !!card.isHidden;
+          const p = new Promise<void>((resolve) => {
+            // 뒤집기 가드 활성화
+            existingGroup.userData.isAnimating = true;
 
-          gsap.to(cardGroup.rotation, {
-            x: targetRotX,
-            y: targetRotY, // 뒤집히는 도중에도 도미노 Y축 회전 반영
-            duration: 0.6,
-            ease: 'back.out(1.2)', // 묵직하게 넘어가 튕기는 피드백
-            onComplete: () => soundManager.playClink(),
+            gsap.to(existingGroup.rotation, {
+              x: targetRotX,
+              y: targetRotY, // 뒤집히는 도중에도 도미노 Y축 회전 반영
+              duration: 0.5,
+              ease: 'power2.out', // 흔들림 제거
+              onStart: () => {
+                // 뒤집기 개시 시점에 투명 유리 재질로 복구하고 깊이 코어도 꺼줌
+                const body = existingGroup.getObjectByName('cardBody') as THREE.Mesh;
+                if (body) body.material = sideGlassMat;
+                const core = existingGroup.getObjectByName('depthCore');
+                if (core) core.visible = false;
+              },
+              onComplete: () => {
+                soundManager.playClink();
+                existingGroup.userData.isAnimating = false; // 가드 해제
+                resolve();
+              },
+            });
           });
+          promises.push(p);
         } else {
-          cardGroup.rotation.x = targetRotX;
-          cardGroup.rotation.y = targetRotY;
-          const depthCore = cardGroup.getObjectByName('depthCore');
-          if (depthCore) depthCore.visible = !!card.isHidden;
+          existingGroup.rotation.x = targetRotX;
+          existingGroup.rotation.y = targetRotY;
+          
+          // 이미 안착된 정적인 기존 카드의 최종 물리 재질 복구
+          const body = existingGroup.getObjectByName('cardBody') as THREE.Mesh;
+          if (body) body.material = card.isHidden ? opaqueBackMat : sideGlassMat;
+          const core = existingGroup.getObjectByName('depthCore');
+          if (core) core.visible = !!card.isHidden;
         }
       }
     }
 
-    // userData 캐싱 (Raycaster 복구 시 참조)
+    // userData 캐싱
     cardGroup.userData.originalX = targetX;
     cardGroup.userData.originalY = targetY;
     cardGroup.userData.originalRotX = targetRotX;
@@ -161,16 +267,6 @@ export function animateHand(
     cardGroup.userData.handLength = totalCount;
     if (isDealer) cardGroup.userData.isDealer = true;
 
-    // depthCore 가시성 최종 동기화
-    const depthCore = cardGroup.getObjectByName('depthCore');
-    if (depthCore) depthCore.visible = !!card.isHidden;
-
-    // 카드 몸체 재질 최종 동기화 (비공개 시 차콜 블랙, 공개 시 투명유리)
-    const cardBody = cardGroup.getObjectByName('cardBody') as THREE.Mesh;
-    if (cardBody) {
-      cardBody.material = card.isHidden ? opaqueBackMat : sideGlassMat;
-    }
-
     // Depth 렌더 오더 정렬
     cardGroup.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -178,6 +274,8 @@ export function animateHand(
       }
     });
   });
+
+  return promises;
 }
 
 /**

@@ -35,6 +35,18 @@ export function useBlackjack() {
     dispatch({ type: 'DOUBLE_DOWN' });
   }, []);
 
+  const dealerDrawCard = useCallback(() => {
+    dispatch({ type: 'DEALER_DRAW_CARD' });
+  }, []);
+
+  const resolveGame = useCallback(() => {
+    dispatch({ type: 'RESOLVE_GAME' });
+  }, []);
+
+  const resolveBust = useCallback(() => {
+    dispatch({ type: 'RESOLVE_BUST' });
+  }, []);
+
   const playerScore = calculateHandScore(state.playerHand);
   
   // 딜러의 핸드 중 숨겨진 카드가 있으면(isHidden: true) 점수 합계 계산 시 딜러 턴이 아닐 때 가려진 점수를 반환함
@@ -62,7 +74,10 @@ export function useBlackjack() {
     deal,
     hit,
     stand,
-    doubleDown
+    doubleDown,
+    dealerDrawCard,
+    resolveGame,
+    resolveBust
   };
 }
 export type { Card, BlackjackState, GameStage };

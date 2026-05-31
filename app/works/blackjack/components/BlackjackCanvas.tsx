@@ -19,9 +19,18 @@ interface BlackjackCanvasProps {
   dealerHand: Card[];
   stage: string;
   winner: 'player' | 'dealer' | 'push' | null;
+  onAnimationStart?: () => void;
+  onAnimationComplete?: () => void;
 }
 
-export default function BlackjackCanvas({ playerHand, dealerHand, stage, winner }: BlackjackCanvasProps) {
+export default function BlackjackCanvas({
+  playerHand,
+  dealerHand,
+  stage,
+  winner,
+  onAnimationStart,
+  onAnimationComplete
+}: BlackjackCanvasProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const { releaseTransition } = useTransitionContext();
 
@@ -153,10 +162,22 @@ export default function BlackjackCanvas({ playerHand, dealerHand, stage, winner 
     dealerHand.forEach((c) => activeIds.add(`D_${c.id}`));
     removeStaleCards(activeIds, cardsMap, scene);
 
+    // 애니메이션 시작 콜백 트리거
+    if (onAnimationStart) {
+      onAnimationStart();
+    }
+
     // 플레이어 핸드 (Z: +1.6)
-    animateHand(playerHand, 'P', 1.6, cardsMap, scene, cardGeo, sideGlassMat);
+    const playerPromises = animateHand(playerHand, 'P', 1.6, cardsMap, scene, cardGeo, sideGlassMat);
     // 딜러 핸드 (Z: -1.6)
-    animateHand(dealerHand, 'D', -1.6, cardsMap, scene, cardGeo, sideGlassMat);
+    const dealerPromises = animateHand(dealerHand, 'D', -1.6, cardsMap, scene, cardGeo, sideGlassMat);
+
+    Promise.all([...playerPromises, ...dealerPromises]).then(() => {
+      // 모든 카드 애니메이션이 끝나면 완료 콜백 트리거
+      if (onAnimationComplete) {
+        onAnimationComplete();
+      }
+    });
   }, [playerHand, dealerHand]);
 
   // ─────────────────────────────────────────────

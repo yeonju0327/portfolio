@@ -213,22 +213,6 @@ export const blackjackReducer = (state: BlackjackState, action: any): BlackjackS
       const playerHand = [...state.playerHand, nextCard];
       const playerScore = calculateHandScore(playerHand);
 
-      if (playerScore > 21) {
-        // 플레이어 버스트 (Bust)로 즉시 패배
-        // 딜러의 카드도 오픈해줌
-        const revealedDealer = state.dealerHand.map(c => ({ ...c, isHidden: false }));
-        return {
-          ...state,
-          deck: newDeck,
-          playerHand,
-          dealerHand: revealedDealer,
-          stage: 'RESOLVED',
-          winner: 'dealer',
-          message: `버스트! 플레이어가 21점을 초과하여 딜러가 승리했습니다. (최종 점수: ${playerScore})`,
-          dealCount: state.dealCount + 1,
-        };
-      }
-
       return {
         ...state,
         deck: newDeck,
@@ -255,65 +239,91 @@ export const blackjackReducer = (state: BlackjackState, action: any): BlackjackS
       const updatedBet = originalBet * 2;
 
       if (playerScore > 21) {
-        const revealedDealer = state.dealerHand.map(c => ({ ...c, isHidden: false }));
         return {
           ...state,
           deck: newDeck,
           playerHand,
-          dealerHand: revealedDealer,
-          stage: 'RESOLVED',
-          winner: 'dealer',
           bet: updatedBet,
           balance: updatedBalance,
-          message: `더블 다운 버스트! 플레이어가 21점을 초과해 패배했습니다. (점수: ${playerScore})`,
           dealCount: state.dealCount + 1,
+          message: `더블 다운 완료. (현재 점수: ${playerScore})`,
         };
       }
 
       // 더블 다운은 한 장만 추가하고 강제로 Stand 턴으로 이행
       // 이 시점에서는 플레이어 턴이 끝나고 딜러가 동작하게 해야 함. 
       // 코드가 즉시 딜러 턴으로 전환되도록 처리
-      return blackjackReducer(
-        {
-          ...state,
-          deck: newDeck,
-          playerHand,
-          bet: updatedBet,
-          balance: updatedBalance,
-          stage: 'DEALER_TURN',
-          dealCount: state.dealCount + 1,
-        },
-        { type: 'DEALER_PLAY' }
-      );
+      const revealedDealer = state.dealerHand.map(c => ({ ...c, isHidden: false }));
+      const dealerScore = calculateHandScore(revealedDealer);
+
+      return {
+        ...state,
+        deck: newDeck,
+        playerHand,
+        bet: updatedBet,
+        balance: updatedBalance,
+        dealerHand: revealedDealer,
+        stage: 'DEALER_TURN',
+        dealCount: state.dealCount + 1,
+        message: `더블 다운 완료. 딜러 차례입니다. (현재 점수: ${dealerScore})`,
+      };
     }
 
     case 'STAND': {
       if (state.stage !== 'PLAYER_TURN') return state;
-      return blackjackReducer(
-        {
-          ...state,
-          stage: 'DEALER_TURN',
-        },
-        { type: 'DEALER_PLAY' }
-      );
+      
+      // 딜러의 숨겨진 카드를 공개 상태로 변경하고 stage를 DEALER_TURN으로 보냄
+      const revealedDealerHand = state.dealerHand.map((c) => ({ ...c, isHidden: false }));
+      const dealerScore = calculateHandScore(revealedDealerHand);
+      
+      return {
+        ...state,
+        dealerHand: revealedDealerHand,
+        stage: 'DEALER_TURN',
+        message: `딜러 차례입니다. (현재 점수: ${dealerScore})`,
+      };
     }
 
-    case 'DEALER_PLAY': {
-      // 딜러의 숨겨진 카드를 먼저 보이게 설정
-      let dealerHand = state.dealerHand.map((c) => ({ ...c, isHidden: false }));
-      let newDeck = [...state.deck];
-      let dealCount = state.dealCount;
+    case 'DEALER_DRAW_CARD': {
+      if (state.stage !== 'DEALER_TURN') return state;
 
-      let dealerScore = calculateHandScore(dealerHand);
+      const newDeck = [...state.deck];
+      if (newDeck.length === 0) return state;
 
-      // 딜러는 소프트/하드 17 미만이면 무조건 Hit 해야 함 (보통 S17 규칙 적용)
-      while (dealerScore < 17) {
-        const nextCard = { ...newDeck.pop()!, isHidden: false, dealOrder: dealCount++ };
-        dealerHand.push(nextCard);
-        dealerScore = calculateHandScore(dealerHand);
-      }
+      const nextCard = { ...newDeck.pop()!, isHidden: false, dealOrder: state.dealCount };
+      const dealerHand = [...state.dealerHand, nextCard];
+      const dealerScore = calculateHandScore(dealerHand);
+
+      return {
+        ...state,
+        deck: newDeck,
+        dealerHand,
+        dealCount: state.dealCount + 1,
+        message: `딜러가 카드를 한 장 가져갑니다. (현재 점수: ${dealerScore})`,
+      };
+    }
+
+    case 'RESOLVE_BUST': {
+      if (state.stage !== 'PLAYER_TURN') return state;
 
       const playerScore = calculateHandScore(state.playerHand);
+      const revealedDealer = state.dealerHand.map(c => ({ ...c, isHidden: false }));
+
+      return {
+        ...state,
+        dealerHand: revealedDealer,
+        stage: 'RESOLVED',
+        winner: 'dealer',
+        message: `버스트! 플레이어가 21점을 초과하여 딜러가 승리했습니다. (최종 점수: ${playerScore})`,
+      };
+    }
+
+    case 'RESOLVE_GAME': {
+      if (state.stage !== 'DEALER_TURN') return state;
+
+      const playerScore = calculateHandScore(state.playerHand);
+      const dealerScore = calculateHandScore(state.dealerHand);
+
       let winner: BlackjackState['winner'] = null;
       let payout = 0;
       let msg = '';
@@ -321,30 +331,27 @@ export const blackjackReducer = (state: BlackjackState, action: any): BlackjackS
       if (dealerScore > 21) {
         winner = 'player';
         payout = state.bet * 2;
-        msg = `딜러 버스트! 플레이어가 승리했습니다! (딜러 점수: ${dealerScore})`;
+        msg = `딜러 버스트! 플레이어가 승리했습니다! (최종 점수 - 플레이어: ${playerScore} vs 딜러: ${dealerScore})`;
       } else if (playerScore > dealerScore) {
         winner = 'player';
         payout = state.bet * 2;
-        msg = `플레이어 승리! (플레이어: ${playerScore} vs 딜러: ${dealerScore})`;
+        msg = `플레이어 승리! (최종 점수 - 플레이어: ${playerScore} vs 딜러: ${dealerScore})`;
       } else if (playerScore < dealerScore) {
         winner = 'dealer';
         payout = 0;
-        msg = `딜러 승리! (플레이어: ${playerScore} vs 딜러: ${dealerScore})`;
+        msg = `딜러 승리! (최종 점수 - 플레이어: ${playerScore} vs 딜러: ${dealerScore})`;
       } else {
         winner = 'push';
         payout = state.bet;
-        msg = `무승부(Push)입니다. (플레이어: ${playerScore} vs 딜러: ${dealerScore})`;
+        msg = `무승부(Push)입니다. (최종 점수 - 플레이어: ${playerScore} vs 딜러: ${dealerScore})`;
       }
 
       return {
         ...state,
-        deck: newDeck,
-        dealerHand,
         stage: 'RESOLVED',
         winner,
         balance: state.balance + payout,
         message: msg,
-        dealCount,
       };
     }
 

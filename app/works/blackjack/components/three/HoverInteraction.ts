@@ -55,6 +55,13 @@ export function createHoverInteraction(
 
       if (intersects.length > 0) {
         const cardGroup = intersects[0].object.parent as THREE.Group;
+        
+        // 애니메이션이 진행 중인 카드는 호버 연산에서 철저히 제외
+        if (cardGroup.userData.isAnimating) {
+          restoreHoveredCard();
+          return;
+        }
+
         if (hoveredCardRef.current !== cardGroup) {
           hoveredCardRef.current = cardGroup;
         }
@@ -102,6 +109,11 @@ export function createHoverInteraction(
 
     // 호버되지 않은 카드들의 원래 Transform으로 부드러운 복귀 (Lerp 루프)
     cardsMapRef.current.forEach((group) => {
+      // 애니메이션 중인 카드는 복귀 보간에서 스킵
+      if (group.userData.isAnimating) {
+        return;
+      }
+
       if (group !== hoveredCardRef.current) {
         const origY = group.userData.originalY ?? group.position.y;
         const origRotX = group.userData.originalRotX ?? group.rotation.x;

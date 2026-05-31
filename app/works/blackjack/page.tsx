@@ -34,10 +34,70 @@ export default function BlackjackPage() {
     deal,
     hit,
     stand,
-    doubleDown
+    doubleDown,
+    dealerDrawCard,
+    resolveGame,
+    resolveBust
   } = useBlackjack();
 
   const [inputBet, setInputBet] = useState<number>(100);
+
+  // 지연된 UI 표시용 상태 선언
+  const [displayedStage, setDisplayedStage] = useState(stage);
+  const [displayedBet, setDisplayedBet] = useState(bet);
+  const [displayedBalance, setDisplayedBalance] = useState(balance);
+  const [displayedMessage, setDisplayedMessage] = useState(message);
+  const [displayedWinner, setDisplayedWinner] = useState(winner);
+  const [displayedPlayerScore, setDisplayedPlayerScore] = useState(playerScore);
+  const [displayedDealerScore, setDisplayedDealerScore] = useState(dealerScore);
+
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  // 애니메이션이 끝나거나, 대기/배팅 상태일 때 즉각적으로 UI 상태를 동기화
+  useEffect(() => {
+    if (!isAnimating || stage === 'READY' || stage === 'BETTING') {
+      setDisplayedStage(stage);
+      setDisplayedBet(bet);
+      setDisplayedBalance(balance);
+      setDisplayedMessage(message);
+      setDisplayedWinner(winner);
+      setDisplayedPlayerScore(playerScore);
+      setDisplayedDealerScore(dealerScore);
+    }
+  }, [isAnimating, stage, bet, balance, message, winner, playerScore, dealerScore]);
+
+  // 딜러 턴의 비동기식 순차 카드 드로우 및 정산 루프 제어
+  useEffect(() => {
+    if (stage !== 'DEALER_TURN') return;
+    if (isAnimating) return;
+
+    if (dealerScore < 17) {
+      const timer = setTimeout(() => {
+        setIsAnimating(true); // 다음 카드 드로우 비행 시작 전 락 선제 확보
+        dealerDrawCard();
+      }, 900); // 딜링 및 뒤집기 템포 사이의 자연스러운 아날로그 간격
+      return () => clearTimeout(timer);
+    } else {
+      const timer = setTimeout(() => {
+        resolveGame();
+      }, 900);
+      return () => clearTimeout(timer);
+    }
+  }, [stage, isAnimating, dealerScore, dealerDrawCard, resolveGame]);
+
+  // 플레이어 버스트(Bust) 발생 시 비행 및 뒤집기 완료 후 지연 정산 제어
+  useEffect(() => {
+    if (stage !== 'PLAYER_TURN') return;
+    if (isAnimating) return;
+
+    if (playerScore > 21) {
+      const timer = setTimeout(() => {
+        setIsAnimating(true); // 딜러 카드 뒤집기 시작 전 락 선제 확보
+        resolveBust();
+      }, 600); // 버스트 카드 뒤집힌 뒤의 자연스러운 아날로그 딜레이
+      return () => clearTimeout(timer);
+    }
+  }, [stage, isAnimating, playerScore, resolveBust]);
 
   // 문양 심볼과 색상 가져오기
   const getSuitSymbol = (suit: string) => {
@@ -70,21 +130,25 @@ export default function BlackjackPage() {
 
   const handleDeal = () => {
     soundManager.init();
+    setIsAnimating(true);
     deal();
   };
 
   const handleHit = () => {
     soundManager.init();
+    setIsAnimating(true);
     hit();
   };
 
   const handleStand = () => {
     soundManager.init();
+    setIsAnimating(true);
     stand();
   };
 
   const handleDoubleDown = () => {
     soundManager.init();
+    setIsAnimating(true);
     doubleDown();
   };
 
@@ -110,7 +174,9 @@ export default function BlackjackPage() {
           playerHand={playerHand}
           dealerHand={dealerHand}
           stage={stage}
-          winner={winner}
+          winner={displayedWinner}
+          onAnimationStart={() => setIsAnimating(true)}
+          onAnimationComplete={() => setIsAnimating(false)}
         />
       </div>
 
@@ -140,7 +206,7 @@ export default function BlackjackPage() {
           pointerEvents: 'none' // 3D 조작 방해 차단
         }}
       >
-        {message}
+        {displayedMessage}
       </div>
 
       {/* 2. 하단 중앙 대형 통합 대시보드 HUD (Balance, Bet, Scores, Buttons 통합) */}
@@ -178,28 +244,28 @@ export default function BlackjackPage() {
           {/* 스탯 표시 (Balance & Bet) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <span style={{ fontSize: '0.95rem', color: '#B2DFDB', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: 'bold' }}>
-              🎲 {stage}
+              🎲 {displayedStage}
             </span>
             <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginTop: '2px' }}>
               <div style={{ fontSize: '1.45rem', fontWeight: 'bold' }}>
-                💰 Balance: <span style={{ color: '#FFD700' }}>${balance}</span>
+                💰 Balance: <span style={{ color: '#FFD700' }}>${displayedBalance}</span>
               </div>
               <div style={{ fontSize: '1.25rem', fontWeight: '600', color: '#E0E0E0' }}>
-                🃏 Bet: <span style={{ color: '#FF9800' }}>${bet}</span>
+                🃏 Bet: <span style={{ color: '#FF9800' }}>${displayedBet}</span>
               </div>
             </div>
           </div>
 
           {/* 스코어 표시 (Dealer & Player) */}
-          {stage !== 'READY' && stage !== 'BETTING' && (
+          {displayedStage !== 'READY' && displayedStage !== 'BETTING' && (
             <div style={{ display: 'flex', gap: '24px', fontWeight: 'bold' }}>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '0.85rem', color: '#B0BEC5', letterSpacing: '1px' }}>DEALER</div>
-                <span style={{ color: '#FFD700', fontSize: '1.6rem' }}>{dealerScore}</span>
+                <span style={{ color: '#FFD700', fontSize: '1.6rem' }}>{displayedDealerScore}</span>
               </div>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '0.85rem', color: '#B0BEC5', letterSpacing: '1px' }}>PLAYER</div>
-                <span style={{ color: '#FFD700', fontSize: '1.6rem' }}>{playerScore}</span>
+                <span style={{ color: '#FFD700', fontSize: '1.6rem' }}>{displayedPlayerScore}</span>
               </div>
             </div>
           )}
@@ -207,20 +273,25 @@ export default function BlackjackPage() {
 
         {/* 하단 버튼행 */}
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', width: '100%' }}>
-          {stage === 'READY' && (
-            <button onClick={handleStartGame} style={btnStyle('#FFD700', '#2C2C2C')}>
+          {displayedStage === 'READY' && (
+            <button 
+              onClick={handleStartGame} 
+              disabled={isAnimating}
+              style={{ ...btnStyle('#FFD700', '#2C2C2C'), opacity: isAnimating ? 0.5 : 1, cursor: isAnimating ? 'not-allowed' : 'pointer' }}
+            >
               Start Game
             </button>
           )}
 
-          {stage === 'BETTING' && (
+          {displayedStage === 'BETTING' && (
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', width: '100%', justifyContent: 'center' }}>
               <input
                 type="number"
                 value={inputBet}
                 onChange={handleBetChange}
+                disabled={isAnimating}
                 min={10}
-                max={balance}
+                max={displayedBalance}
                 step={50}
                 style={{
                   padding: '12px',
@@ -232,19 +303,24 @@ export default function BlackjackPage() {
                   fontWeight: 'bold',
                   outline: 'none',
                   backgroundColor: '#FFF',
-                  color: '#000'
+                  color: '#000',
+                  opacity: isAnimating ? 0.5 : 1
                 }}
               />
-              <button onClick={handleSetBet} style={btnStyle('#FF9800', '#FFF')}>
+              <button 
+                onClick={handleSetBet} 
+                disabled={isAnimating}
+                style={{ ...btnStyle('#FF9800', '#FFF'), opacity: isAnimating ? 0.5 : 1, cursor: isAnimating ? 'not-allowed' : 'pointer' }}
+              >
                 Bet
               </button>
               <button 
                 onClick={handleDeal} 
-                disabled={bet === 0} 
+                disabled={isAnimating || displayedBet === 0} 
                 style={{ 
                   ...btnStyle('#4CAF50', '#FFF'), 
-                  opacity: bet === 0 ? 0.5 : 1, 
-                  cursor: bet === 0 ? 'not-allowed' : 'pointer' 
+                  opacity: (isAnimating || displayedBet === 0) ? 0.5 : 1, 
+                  cursor: (isAnimating || displayedBet === 0) ? 'not-allowed' : 'pointer' 
                 }}
               >
                 Deal
@@ -252,21 +328,29 @@ export default function BlackjackPage() {
             </div>
           )}
 
-          {stage === 'PLAYER_TURN' && (
+          {displayedStage === 'PLAYER_TURN' && (
             <div style={{ display: 'flex', gap: '12px', width: '100%', justifyContent: 'center' }}>
-              <button onClick={handleHit} style={btnStyle('#E57373', '#FFF')}>
+              <button 
+                onClick={handleHit} 
+                disabled={isAnimating}
+                style={{ ...btnStyle('#E57373', '#FFF'), opacity: isAnimating ? 0.5 : 1, cursor: isAnimating ? 'not-allowed' : 'pointer' }}
+              >
                 Hit
               </button>
-              <button onClick={handleStand} style={btnStyle('#81C784', '#FFF')}>
+              <button 
+                onClick={handleStand} 
+                disabled={isAnimating}
+                style={{ ...btnStyle('#81C784', '#FFF'), opacity: isAnimating ? 0.5 : 1, cursor: isAnimating ? 'not-allowed' : 'pointer' }}
+              >
                 Stand
               </button>
               <button
                 onClick={handleDoubleDown}
-                disabled={balance < bet}
+                disabled={isAnimating || displayedBalance < displayedBet}
                 style={{ 
                   ...btnStyle('#64B5F6', '#FFF'), 
-                  opacity: balance < bet ? 0.5 : 1, 
-                  cursor: balance < bet ? 'not-allowed' : 'pointer' 
+                  opacity: (isAnimating || displayedBalance < displayedBet) ? 0.5 : 1, 
+                  cursor: (isAnimating || displayedBalance < displayedBet) ? 'not-allowed' : 'pointer' 
                 }}
               >
                 Double
@@ -274,8 +358,12 @@ export default function BlackjackPage() {
             </div>
           )}
 
-          {stage === 'RESOLVED' && (
-            <button onClick={handleStartGame} style={btnStyle('#00B0FF', '#FFF')}>
+          {displayedStage === 'RESOLVED' && (
+            <button 
+              onClick={handleStartGame} 
+              disabled={isAnimating}
+              style={{ ...btnStyle('#00B0FF', '#FFF'), opacity: isAnimating ? 0.5 : 1, cursor: isAnimating ? 'not-allowed' : 'pointer' }}
+            >
               Play Again
             </button>
           )}
