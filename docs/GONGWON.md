@@ -25,6 +25,7 @@
   * 페이지 진입 시 트랜지션 애니메이션을 조율합니다.
 * **공통 UI 컴포넌트:**
   * `app/works/components/BackToMapButton.tsx`: 메인 노드 맵으로 언제든지 부드럽게 복귀할 수 있게 하는 화면 좌측 상단의 고정 버튼입니다.
+  * `app/works/components/WorkLogo.tsx`: 모든 작품 페이지의 우측 상단에 고정 표시되는 GONGWON 플로팅 워터마크 로고 컴포넌트입니다. `pointer-events: none` 처리가 되어 다른 UI 조작을 방해하지 않으며, 모바일 크기에 맞춰 자동으로 크기가 축소되는 반응형 처리가 적용되어 있습니다.
 
 ---
 

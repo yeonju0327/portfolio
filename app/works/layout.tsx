@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import '../globals.css';
 import { useTransitionContext } from '../context/TransitionContext';
+import WorkLogo from './components/WorkLogo';
 
 export default function WorksLayout({
   children,
@@ -48,6 +49,7 @@ export default function WorksLayout({
       </svg>
       
       {children}
+      <WorkLogo />
     </div>
   );
 }

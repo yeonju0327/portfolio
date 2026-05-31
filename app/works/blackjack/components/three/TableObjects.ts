@@ -11,21 +11,48 @@ export interface TableObjectsResult {
  * 카드 구역 가이드 박스(딜러/플레이어)와 덱 더미 오브젝트를 씬에 추가합니다.
  */
 export function createTableObjects(scene: THREE.Scene): TableObjectsResult {
-  // 1. 카드 구역 가이드 박스 라인 (외각 테두리만 흰색 실선)
-  const guideGeo = new THREE.PlaneGeometry(6.5, 2.6);
-  const edgesGeo = new THREE.EdgesGeometry(guideGeo);
-  const borderMat = new THREE.LineBasicMaterial({
+  // 1. 카드 구역 가이드 박스 라인 (외각 테두리 단일 ShapeGeometry 면 구조)
+  const borderThickness = 0.015; // 선 두께를 얇고 선명하게 조절 (기존 0.045에서 축소)
+  const guideWidth = 6.5;
+  const guideHeight = 2.6;
+
+  const shape = new THREE.Shape();
+  const hw = guideWidth / 2;
+  const hh = guideHeight / 2;
+
+  // 외각 사각형 정의 (시계 반대 방향)
+  shape.moveTo(-hw, -hh);
+  shape.lineTo(hw, -hh);
+  shape.lineTo(hw, hh);
+  shape.lineTo(-hw, hh);
+  shape.closePath();
+
+  // 내각 구멍 정의 (시계 방향으로 차감)
+  const hole = new THREE.Path();
+  const ihw = hw - borderThickness;
+  const ihh = hh - borderThickness;
+  hole.moveTo(-ihw, -ihh);
+  hole.lineTo(-ihw, ihh);
+  hole.lineTo(ihw, ihh);
+  hole.lineTo(ihw, -ihh);
+  hole.closePath();
+  shape.holes.push(hole);
+
+  const guideGeo = new THREE.ShapeGeometry(shape);
+
+  const borderMat = new THREE.MeshBasicMaterial({
     color: '#FFFFFF',
     transparent: true,
-    opacity: 0.24,
+    opacity: 0.40, // 얇아진 선에 맞추어 투명도 재조정 (0.55 -> 0.40)
+    side: THREE.DoubleSide,
   });
 
-  const dealerGuide = new THREE.LineSegments(edgesGeo, borderMat);
+  const dealerGuide = new THREE.Mesh(guideGeo, borderMat);
   dealerGuide.rotation.x = -Math.PI / 2;
   dealerGuide.position.set(0, 0.01, -1.7);
   scene.add(dealerGuide);
 
-  const playerGuide = new THREE.LineSegments(edgesGeo, borderMat);
+  const playerGuide = new THREE.Mesh(guideGeo, borderMat);
   playerGuide.rotation.x = -Math.PI / 2;
   playerGuide.position.set(0, 0.01, 1.7);
   scene.add(playerGuide);
@@ -46,7 +73,7 @@ export function createTableObjects(scene: THREE.Scene): TableObjectsResult {
   });
 
   const deckCount = 16; // 16장 레이어링으로 두께감 연출
-  const geomsToDispose: THREE.BufferGeometry[] = [guideGeo, edgesGeo, cardGeo];
+  const geomsToDispose: THREE.BufferGeometry[] = [guideGeo, cardGeo];
   const matsToDispose: THREE.Material[] = [borderMat, paperMat];
 
   // 덱 맨 윗장 뒷면 데칼 텍스처 및 재질
