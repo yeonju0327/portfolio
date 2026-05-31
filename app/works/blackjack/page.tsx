@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import BackToMapButton from '../components/BackToMapButton';
 import { useBlackjack } from './hooks/useBlackjack';
 import { soundManager } from './logic/SoundManager';
+import { useTransitionContext } from '../../context/TransitionContext';
 
 const BlackjackCanvas = dynamic(
   () => import('./components/BlackjackCanvas'),
@@ -12,6 +13,12 @@ const BlackjackCanvas = dynamic(
 );
 
 export default function BlackjackPage() {
+  const { holdTransition } = useTransitionContext();
+
+  useEffect(() => {
+    holdTransition();
+  }, [holdTransition]);
+
   const {
     playerHand,
     dealerHand,

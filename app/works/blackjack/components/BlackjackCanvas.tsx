@@ -12,6 +12,7 @@ import { createCardGeometry, createCardMaterial } from './three/CardBuilder';
 import { animateHand, removeStaleCards } from './three/CardAnimator';
 import { createHoverInteraction } from './three/HoverInteraction';
 import LoadingOverlay from './LoadingOverlay';
+import { useTransitionContext } from '../../../context/TransitionContext';
 
 interface BlackjackCanvasProps {
   playerHand: Card[];
@@ -22,6 +23,7 @@ interface BlackjackCanvasProps {
 
 export default function BlackjackCanvas({ playerHand, dealerHand, stage, winner }: BlackjackCanvasProps) {
   const mountRef = useRef<HTMLDivElement>(null);
+  const { releaseTransition } = useTransitionContext();
 
   // Three.js 핵심 ref (각 모듈의 dispose 함수 접근용)
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -75,7 +77,14 @@ export default function BlackjackCanvas({ playerHand, dealerHand, stage, winner 
       renderer,
       overlayRef,
       onProgress: setLoadingProgress,
-      onOverlayHidden: () => setShowOverlay(false),
+      onOverlayHidden: () => {
+        setShowOverlay(false);
+      },
+      onLoad: () => {
+        setTimeout(() => {
+          releaseTransition();
+        }, 500);
+      }
     });
     envRefsRef.current = envRefs;
 

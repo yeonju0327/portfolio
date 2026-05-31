@@ -158,4 +158,15 @@
   * 이를 해결하기 위해 `CardBuilder.ts` 내에 카드 본체 유리 메쉬에 `'cardBody'` 라는 이름을 명명하고, 비공개 상태일 때는 불투명한 차콜 블랙 표준 재질(`opaqueBackMat`, `#1A1A1A`)을 할당하도록 하였습니다.
   * `CardAnimator.ts` 내의 실시간 애니메이션 루프 영역에서 `card.isHidden` 플래그의 갱신에 발맞추어 `cardBody.material`을 `opaqueBackMat`(비공개 시)과 `sideGlassMat`(공개 시) 사이에서 동적으로 스위칭하도록 구현하여, 비공개 시에는 옆면까지 검은색 더미로 감추고 카드가 뒤집히며 공개되는 즉시 다시 영롱한 유리 재질로 원활하게 변환되는 고도화된 3D 게임 연출을 완수했습니다.
 
+## 22. 3D 리소스 비동기 로딩과 페이지 이동 트랜지션 애니메이션 싱크 동기화 (Transition Hold & Release)
+* **현상**: 상세 페이지(`/works/blackjack`) 진입 시, 3D WebGL(HDR 및 씬 설정) 리소스가 로딩 중인데도 트랜지션 덮개가 즉시 걷혀 빈 검은 화면이 일시 노출되는 현상이 계속되었습니다.
+* **원인**:
+  1. 리액트의 `useState` 상태 업데이트 비동기 특성으로 인해, `page.tsx` 마운트 시 `holdTransition()`을 호출하여 `isTransitionHeld(true)` 상태 갱신을 큐에 쌓더라도, 동일 마운트 이펙트 실행 틱 내의 `layout.tsx` 이펙트에서는 상태 초기값(`false`)을 읽어 트랜지션이 조기 구동되는 **마운트 레이스 컨디션**이 원인이었습니다.
+  2. 리소스가 실제로 100% 완료된 시점(오버레이 페이드아웃 시작 시점)과, 오버레이 페이드아웃 애니메이션 완료(0.8초 지연) 후의 콜백 시점이 혼재되어 트랜지션 걷히기가 무의미하게 추가 지연되었습니다.
+* **해결책**:
+  * **State-Sync Ref 패턴 도입**: `TransitionContext` 내부에 반응형 `isTransitionHeld` 상태와 동기식 `isTransitionHeldRef` 참조 변수를 병렬 제공했습니다. `holdTransition()`, `releaseTransition()`, `resetTransition()` 함수 내에서 상태와 Ref 값을 동기식으로 일치시켜 마운트 틱 타이밍 이슈를 완벽히 해결했습니다.
+  * **동기식 이중 가드**: `layout.tsx` 마운트 즉시 `isTransitionHeldRef.current` 값을 체크해 동기적으로 트랜지션 재생을 스킵(return)하고, 나중에 로드 완료 후 `isTransitionHeld` 상태 전이 시에 `useEffect` 의존성 트리거에 의해 비로소 `playInDetailTransition()`이 구동되도록 견고하게 가드를 쳤습니다.
+  * **HDR 로드 콜백 분리 및 0.5초 딜레이 적용 (`onLoad`)**: `.hdr` 파일 다운로드가 끝난 시점 (`EnvironmentLoader`의 onLoad 시점) 즉시 동작하지 않고, 3D 씬 안정화 및 여유 있는 전환을 위해 0.5초(500ms)의 `setTimeout` 대기 시간을 부여한 뒤 `releaseTransition()`을 트리거하여 덮개가 열리기 시작하도록 튜닝했습니다.
+
+
 

@@ -15,10 +15,14 @@ interface TransitionContextProps {
   imageRadius: number;
   centerPos: { x: number; y: number } | null;
   isBackTransition: boolean;
+  isTransitionHeld: boolean;
+  isTransitionHeldRef: React.RefObject<boolean>;
   startTransition: (targetUrl: string, screenX: number, screenY: number, radius: number, imageRadius: number, imgUrl: string, color: string) => void;
   startBackTransition: (color: string, imgUrl: string, callbackUrl?: string) => void;
   playInTransition: (screenX: number, screenY: number, radius: number, imageRadius: number, imgUrl: string, color: string) => void;
   playInDetailTransition: () => void;
+  holdTransition: () => void;
+  releaseTransition: () => void;
   setTransitionState: (state: { isTransitioning: boolean; type: TransitionType; centerPos: { x: number; y: number } | null; radius: number; imageRadius: number; imgUrl: string; color: string; isBackTransition: boolean }) => void;
   resetTransition: () => void;
 }
@@ -32,6 +36,8 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [color, setColor] = useState('#2C2C2C');
   const [imgUrl, setImgUrl] = useState('');
   const [isBackTransition, setIsBackTransition] = useState(false);
+  const [isTransitionHeld, setIsTransitionHeld] = useState(false);
+  const isTransitionHeldRef = useRef(false);
 
   // 리렌더링에 필요한 상태 정의
   const [radius, setRadiusState] = useState(80);
@@ -176,6 +182,16 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setImageRadius(finalImageRadius);
   }, [setCenterPos, setRadius, setImageRadius]);
 
+  const holdTransition = useCallback(() => {
+    isTransitionHeldRef.current = true;
+    setIsTransitionHeld(true);
+  }, []);
+
+  const releaseTransition = useCallback(() => {
+    isTransitionHeldRef.current = false;
+    setIsTransitionHeld(false);
+  }, []);
+
   const setTransitionState = useCallback((state: { isTransitioning: boolean; type: TransitionType; centerPos: { x: number; y: number } | null; radius: number; imageRadius: number; imgUrl: string; color: string; isBackTransition: boolean }) => {
     setIsTransitioning(state.isTransitioning);
     setType(state.type);
@@ -195,6 +211,8 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setRadius(80);
     setImageRadius(75);
     setIsBackTransition(false);
+    isTransitionHeldRef.current = false;
+    setIsTransitionHeld(false);
   }, [setCenterPos, setRadius, setImageRadius]);
 
   return (
@@ -208,10 +226,14 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         imageRadius,
         centerPos,
         isBackTransition,
+        isTransitionHeld,
+        isTransitionHeldRef,
         startTransition,
         startBackTransition,
         playInTransition,
         playInDetailTransition,
+        holdTransition,
+        releaseTransition,
         setTransitionState,
         resetTransition
       }}

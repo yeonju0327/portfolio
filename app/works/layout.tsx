@@ -9,11 +9,12 @@ export default function WorksLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { playInDetailTransition } = useTransitionContext();
+  const { playInDetailTransition, isTransitionHeld, isTransitionHeldRef } = useTransitionContext();
   const hasPlayedRef = useRef(false);
 
   useEffect(() => {
     if (hasPlayedRef.current) return;
+    if (isTransitionHeldRef.current) return;
     hasPlayedRef.current = true;
 
     if (typeof window !== 'undefined') {
@@ -21,7 +22,7 @@ export default function WorksLayout({
     }
     // 작품 상세에 진입 완료했으므로 화면을 덮고 있던 덮개 오프너(구멍 열기) 가동
     playInDetailTransition();
-  }, [playInDetailTransition]);
+  }, [playInDetailTransition, isTransitionHeld]);
 
   return (
     <div className="works-root-layout" style={{ position: 'relative', minHeight: '100vh', backgroundColor: '#e5e5e5' }}>

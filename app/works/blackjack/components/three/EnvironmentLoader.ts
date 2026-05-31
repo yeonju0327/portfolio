@@ -9,6 +9,7 @@ export interface EnvironmentLoaderOptions {
   overlayRef: { current: HTMLDivElement | null };
   onProgress: (percent: number) => void;
   onOverlayHidden: () => void;
+  onLoad?: () => void;
 }
 
 /**
@@ -70,6 +71,10 @@ export function loadEnvironment(opts: EnvironmentLoaderOptions): EnvironmentRefs
         refs.bgMaterial = bgMat;
         refs.hdrTexture = texture;
         refs.envMap = envMap;
+
+        if (opts.onLoad) {
+          opts.onLoad();
+        }
 
         // 서서히 씬 노출을 올려 눈부심 없이 부드러운 전환
         gsap.to(opts.renderer, {
