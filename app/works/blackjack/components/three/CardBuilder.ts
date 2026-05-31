@@ -29,6 +29,13 @@ export function createCardMaterial(): THREE.MeshPhysicalMaterial {
   });
 }
 
+/** 모든 카드가 공유하는 불투명 차콜 블랙 재질 */
+export const opaqueBackMat = new THREE.MeshStandardMaterial({
+  color: '#1A1A1A',
+  roughness: 0.9,
+  metalness: 0.05,
+});
+
 /**
  * 카드 한 장에 해당하는 Three.js Group을 조립합니다.
  * - 통유리판 메쉬 (MeshPhysicalMaterial)
@@ -49,8 +56,10 @@ export function buildCardGroup(
   const backTex = createCardBackTexture();
   if (backTex) backTex.anisotropy = 16;
 
-  // 1. 단일 통유리판 메쉬 (6면 전체 굴절 및 투과 유리)
-  const cardMesh = new THREE.Mesh(cardGeo, sideGlassMat);
+  // 1. 단일 통유리판 메쉬 (6면 전체 굴절 및 투과 유리, 비공개 시 차콜 블랙)
+  const initialMat = card.isHidden ? opaqueBackMat : sideGlassMat;
+  const cardMesh = new THREE.Mesh(cardGeo, initialMat);
+  cardMesh.name = 'cardBody';
   cardMesh.castShadow = false;
   cardMesh.receiveShadow = false;
   group.add(cardMesh);
@@ -62,7 +71,7 @@ export function buildCardGroup(
       map: faceTex,
       transparent: true,
       opacity: 1.0,
-      depthWrite: true,
+      depthWrite: false,
       depthTest: true,
     });
     const faceDecal = new THREE.Mesh(decalGeo, faceDecalMat);
@@ -77,7 +86,7 @@ export function buildCardGroup(
       map: backTex,
       transparent: true,
       opacity: 1.0,
-      depthWrite: true,
+      depthWrite: false,
       depthTest: true,
     });
     const backDecal = new THREE.Mesh(decalGeo, backDecalMat);

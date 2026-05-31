@@ -508,7 +508,7 @@ const Main = () => {
           src="/images/gongwon.png" 
           alt="GONGWON Logo" 
           style={{ 
-            height: '144px', 
+            height: '200px', 
             objectFit: 'contain',
             filter: 'drop-shadow(2px 3px 6px rgba(0,0,0,0.15))'
           }} 

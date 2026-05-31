@@ -38,9 +38,9 @@ export function createTableObjects(scene: THREE.Scene): TableObjectsResult {
   // 덱 카드용 지오메트리 공유 생성
   const cardGeo = new RoundedBoxGeometry(CARD_WIDTH, CARD_HEIGHT, CARD_THICKNESS, 4, 0.05);
 
-  // 아래 쌓여있는 카드들의 연한 아이보리/크림색 종이 질감 재질
+  // 아래 쌓여있는 카드들의 연한 검정/차콜 종이 질감 재질
   const paperMat = new THREE.MeshStandardMaterial({
-    color: '#f2eee5',
+    color: '#1A1A1A',
     roughness: 0.9,
     metalness: 0.05,
   });

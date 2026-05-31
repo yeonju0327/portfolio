@@ -80,50 +80,28 @@ export const createCardBackTexture = (): THREE.CanvasTexture | null => {
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
 
-  // 카드 뒷면 투명화 후 옅은 흰색 불투명도 주입 (겹쳤을 때 자연스러운 레이어 연출용)
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+  // 전체 배경을 회색이 섞인 검은색 (#1A1A1A)으로 가득 채움
+  ctx.fillStyle = '#1A1A1A';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // 카드 외곽 프레임 (2x 굵게) - 선명하게 보이도록 불투명도 0.14 -> 0.90 대폭 상향
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.90)';
-  ctx.fillRect(30, 30, canvas.width - 60, canvas.height - 60);
 
   const cx = canvas.width / 2;
   const cy = canvas.height / 2;
-
-  // 2-1. 외부 장식 써클 드로잉 (2x 크기) - 쨍한 파란색 원색 변경
-  ctx.strokeStyle = '#0055FF';
-  ctx.lineWidth = 28;
-  ctx.beginPath();
-  ctx.arc(cx, cy, 280, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // 2-2. 내부 기하학 격자 다이아몬드 드로잉 (2x 크기) - 쨍한 검은색 원색 변경
-  ctx.fillStyle = '#000000';
-  ctx.beginPath();
-  ctx.moveTo(cx, cy - 220);
-  ctx.lineTo(cx + 220, cy);
-  ctx.lineTo(cx, cy + 220);
-  ctx.lineTo(cx - 220, cy);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.strokeStyle = '#FFCC00'; // 다이아몬드 쨍한 금빛 테두리선
-  ctx.lineWidth = 12;
-  ctx.stroke();
-
-  // 2-3. 중앙 장식 심볼 'B' (2x 크기) - 쨍한 황금색 변경
-  ctx.fillStyle = '#FFCC00';
-  ctx.font = 'bold 220px Garamond, "Times New Roman", serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('B', cx, cy - 10);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.generateMipmaps = true;
+
+  // GONGWON 흰색 로고 이미지(gongwon_white.png) 로드하여 중앙에 드로잉
+  const img = new Image();
+  img.src = '/images/gongwon_white.png';
+  img.onload = () => {
+    const logoW = 650;
+    const logoH = 650;
+    ctx.drawImage(img, cx - logoW / 2, cy - logoH / 2, logoW, logoH);
+    texture.needsUpdate = true;
+  };
+
   return texture;
 };
 

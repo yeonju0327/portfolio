@@ -3,7 +3,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { gsap } from 'gsap';
 import { Card } from '../../hooks/useBlackjack';
 import { soundManager } from '../../logic/SoundManager';
-import { buildCardGroup, CARD_WIDTH, CARD_THICKNESS } from './CardBuilder';
+import { buildCardGroup, CARD_WIDTH, CARD_THICKNESS, opaqueBackMat } from './CardBuilder';
 
 /** 덱 더미 오브젝트와 동일한 위치 — 카드 딜링 시작 스폰 지점 */
 export const DECK_SPAWN = { x: 4.2, y: 1.0, z: 0.0 } as const;
@@ -164,6 +164,12 @@ export function animateHand(
     // depthCore 가시성 최종 동기화
     const depthCore = cardGroup.getObjectByName('depthCore');
     if (depthCore) depthCore.visible = !!card.isHidden;
+
+    // 카드 몸체 재질 최종 동기화 (비공개 시 차콜 블랙, 공개 시 투명유리)
+    const cardBody = cardGroup.getObjectByName('cardBody') as THREE.Mesh;
+    if (cardBody) {
+      cardBody.material = card.isHidden ? opaqueBackMat : sideGlassMat;
+    }
 
     // Depth 렌더 오더 정렬
     cardGroup.traverse((child) => {
