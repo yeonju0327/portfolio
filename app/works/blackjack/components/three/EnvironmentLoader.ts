@@ -42,6 +42,9 @@ export function loadEnvironment(opts: EnvironmentLoaderOptions): EnvironmentRefs
     .load(
       '/images/citrus_orchard_road_puresky_2k.hdr',
       (texture) => {
+        // 수평 회전 offset을 적용하여 배경 및 반사상을 시계 방향으로 회전시킴 (이전 상태에서 90도 시계 방향 추가 변환)
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.offset.x = -0.125;
         texture.mapping = THREE.EquirectangularReflectionMapping;
         const envMap = pmremGenerator.fromEquirectangular(texture).texture;
 
