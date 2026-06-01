@@ -314,6 +314,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ selectedNode, dashboar
               lineHeight: '34px', 
               color: '#2A2A2A', 
               wordBreak: 'keep-all',
+              whiteSpace: 'pre-wrap', // 개행 및 공백 보존
               transform: 'rotate(-0.5deg)', 
               transformOrigin: 'left top',
               filter: 'url(#handwriting-ink)', 

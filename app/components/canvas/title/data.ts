@@ -21,7 +21,21 @@ export const RAW_TREE: Record<string, RawNodeData> = {
   'works-game': { id: 'works-game', color: '#B5749E', img: '/images/node-image.jpg', icon: 'project', caption: 'Game Projects', children: ['game-1', 'web-1'], description: 'Unity와 Canvas API를 이용한 게임 개발 기록입니다.', tags: ['Unity', 'C#', 'Crayon Texture Engine'], linkUrl: '' },
   'works-data': { id: 'works-data', color: '#6E88B5', img: '/images/node-image.jpg', icon: 'project', caption: 'Data Vis', children: ['data-1'], description: '복잡한 데이터를 직관적으로 풀어낸 시각화 프로젝트입니다.', tags: ['D3.js', 'SVG Animation', 'Data Analysis'], linkUrl: '' },
   'works-design': { id: 'works-design', color: '#DDA05B', img: '/images/node-image.jpg', icon: 'project', caption: 'Design', children: ['design-1', 'design-2'], description: '사용자 경험을 최우선으로 고려한 UI/UX 디자인 작업물입니다.', tags: ['Figma', 'UI/UX', 'Interaction Design'], linkUrl: '' },
-  'web-1': { id: 'web-1', color: '#80DEEA', img: '/images/node-image.jpg', icon: 'project', caption: '#1 BlackJack', children: [], description: '두께감 있는 3D 유리 카드 블록이 빛을 굴절시키는 블랙잭 게임입니다. WebGL의 뎁스 정렬 최적화와 물리 기반 유리 재질을 구현했습니다.', tags: ['Three.js', 'WebGL', 'GSAP', 'Next.js', 'ShaderMaterial'], linkUrl: '/works/blackjack' },
+  'web-1': {
+    id: 'web-1',
+    color: '#80DEEA',
+    img: '/images/node-image.jpg',
+    icon: 'project',
+    caption: '#1 BlackJack',
+    children: [],
+    description: `　블랙잭은 21에 가장 가까운 숫자를 만드는 게임이에요. 21에 가까울수록 좋지만, 조금이라도 넘치는 순간 가지고 있던 것들까지 전부 잃어버리고 말죠.
+
+　우리는 때때로 더 잘하려고, 더 가지려고, 조금만 더 완벽해지려고 달리다가 정작 지금 가지고 있는 것의 무게를 잊어버리곤 해요. 지금 가진 게 충분하다는 걸 느끼는 건 꽤 어려운 일이에요. 모든 사람의 충분함은 서로 다르지만 분명히 존재한다는 건 알 수 있어요. 그리고 거기서 조용히 멈출 수 있다면, 그걸로 충분한 거 아닐까요?
+
+　빛을 굴절시키는 두께감 있는 3D 유리 카드를 활용한 블랙잭 게임을 구현했습니다. 버스트 시 산산조각나는 애니메이션을 구현하여, 넘쳤을 때의 결과를 시각적으로 강렬하게 담아내고자 했습니다.`,
+    tags: ['Three.js', 'WebGL', 'GSAP', 'Next.js', 'ShaderMaterial'],
+    linkUrl: '/works/blackjack'
+  },
   'web-2': { id: 'web-2', color: '#F2A68D', img: '/images/node-image.jpg', icon: 'project', caption: 'E-commerce', children: [], description: '반응형 디자인이 적용된 쇼핑몰 웹사이트입니다. 아날로그 룩앤필의 찢어진 종이 메타포 카드 결제 UI를 탑재했습니다.', tags: ['React', 'Redux Toolkit', 'TailwindCSS', 'Node.js'], linkUrl: 'https://github.com/yeonju0327/e-commerce' },
   'game-1': { id: 'game-1', color: '#C88AB2', img: '/images/node-image.jpg', icon: 'project', caption: '2D Platformer', children: [], description: '부드러운 조작감을 자랑하는 2D 플랫포머 게임입니다. 손그림 스타일의 텍스처 맵과 잉크 번짐 파티클 효과를 자체 구현했습니다.', tags: ['Unity 2D', 'C#', 'Spine 2D Animation'], linkUrl: 'https://github.com/yeonju0327/crayon-platformer' },
   'data-1': { id: 'data-1', color: '#859FCF', img: '/images/node-image.jpg', icon: 'project', caption: 'COVID Tracker', children: [], description: '전 세계 코로나 확산 추이를 시간의 흐름에 따라 잉크가 캔버스에 떨어져 퍼지는 애니메이션으로 시각화한 대시보드입니다.', tags: ['D3.js', 'SVG Filter', 'Vanilla JS'], linkUrl: 'https://github.com/yeonju0327/covid-visualizer' },
