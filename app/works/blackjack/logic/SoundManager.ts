@@ -132,6 +132,55 @@ class SoundManager {
     noiseSource.stop(now + 0.03);
   }
 
+  // 3-5. 3D 물리 버튼 클릭용 짧고 둔탁한 타격음 합성 (Button Click Sound)
+  public playClick() {
+    this.resumeContext();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    
+    // 묵직하고 짧은 사인파 (400Hz -> 100Hz)
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(380, now);
+    osc.frequency.exponentialRampToValueAtTime(80, now + 0.08);
+
+    // 틱 하는 미세 마찰 노이즈 추가
+    const bufferSize = this.ctx.sampleRate * 0.015; // 15ms
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    const noiseSource = this.ctx.createBufferSource();
+    noiseSource.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(600, now);
+
+    const oscGain = this.ctx.createGain();
+    oscGain.gain.setValueAtTime(0.28, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.12, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.015);
+
+    osc.connect(oscGain);
+    oscGain.connect(this.ctx.destination);
+
+    noiseSource.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.08);
+
+    noiseSource.start(now);
+    noiseSource.stop(now + 0.015);
+  }
+
   // 4. 유리가 깨질 때의 쨍그랑하는 파편 소리 합성 (Glass Shattering Sound)
   public playShatter() {
     this.resumeContext();

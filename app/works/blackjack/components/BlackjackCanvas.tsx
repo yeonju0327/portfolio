@@ -15,11 +15,21 @@ import LoadingOverlay from './LoadingOverlay';
 import { useTransitionContext } from '../../../context/TransitionContext';
 import { calculateHandScore } from '../logic/BlackjackEngine';
 
+import { createButtons3D } from './three/Buttons3D';
+import { createClocks3D } from './three/Clocks3D';
+
 interface BlackjackCanvasProps {
   playerHand: Card[];
   dealerHand: Card[];
   stage: string;
+  rawStage: string;
   winner: 'player' | 'dealer' | 'push' | null;
+  playerScore: number;
+  dealerScore: number;
+  isAnimating: boolean;
+  onHit: () => void;
+  onStand: () => void;
+  onStart: () => void;
   onAnimationStart?: () => void;
   onAnimationComplete?: () => void;
 }
@@ -28,7 +38,14 @@ export default function BlackjackCanvas({
   playerHand,
   dealerHand,
   stage,
+  rawStage,
   winner,
+  playerScore,
+  dealerScore,
+  isAnimating,
+  onHit,
+  onStand,
+  onStart,
   onAnimationStart,
   onAnimationComplete
 }: BlackjackCanvasProps) {
@@ -46,6 +63,10 @@ export default function BlackjackCanvas({
   const hoveredCardRef = useRef<THREE.Group | null>(null);
   const cardGeoRef = useRef<ReturnType<typeof createCardGeometry> | null>(null);
   const sideGlassMatRef = useRef<ReturnType<typeof createCardMaterial> | null>(null);
+
+  // 3D 버튼 & 시계 ref
+  const buttonsRef = useRef<ReturnType<typeof createButtons3D> | null>(null);
+  const clocksRef = useRef<ReturnType<typeof createClocks3D> | null>(null);
 
   // 로딩 오버레이 상태
   const [loadingProgress, setLoadingProgress] = useState<number>(0);
@@ -80,6 +101,33 @@ export default function BlackjackCanvas({
     const cardMat = createCardMaterial();
     cardGeoRef.current = cardGeo;
     sideGlassMatRef.current = cardMat;
+
+    // 3D 버튼 생성 및 바인딩
+    const buttons3D = createButtons3D(
+      scene,
+      () => onHit(),
+      () => onStand(),
+      () => {
+        clearShatteredCards(scene); // 시작 시 깨진 유리 조각 즉시 제거
+        onStart();
+      }
+    );
+    buttonsRef.current = buttons3D;
+
+    // 3D LED 전자시계 점수판 생성
+    const clocks3D = createClocks3D(scene);
+    clocksRef.current = clocks3D;
+
+    // 3D 버튼 클릭 마우스/터치 리스너 연결
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!cameraRef.current || !buttonsRef.current) return;
+      const rect = container.getBoundingClientRect();
+      const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      const pointer = new THREE.Vector2(x, y);
+      buttonsRef.current.handlePointerDown(cameraRef.current, pointer);
+    };
+    container.addEventListener('pointerdown', handlePointerDown);
 
     // HDR 환경맵 비동기 로딩
     const envRefs = loadEnvironment({
@@ -129,6 +177,11 @@ export default function BlackjackCanvas({
       // Raycaster 호버 틸트 처리
       hover.tick(camera);
 
+      // 3D 버튼 호버 tick 처리
+      if (buttonsRef.current) {
+        buttonsRef.current.tick(camera, hover.pointerRef.current);
+      }
+
       postProcessing.composer.render();
     };
     animate();
@@ -136,8 +189,11 @@ export default function BlackjackCanvas({
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
+      container.removeEventListener('pointerdown', handlePointerDown);
       hover.dispose();
       disposeTable();
+      buttons3D.dispose();
+      clocks3D.dispose();
       if (envRefsRef.current) disposeEnvironment(envRefsRef.current);
       postProcessing.dispose();
       cardGeoRef.current?.dispose();
@@ -184,8 +240,8 @@ export default function BlackjackCanvas({
       const dScore = calculateHandScore(dealerHand);
       const shatterPromises: Promise<void>[] = [];
 
-      // 플레이어 버스트 시 딜러 카드가 먼저 다 뒤집혀 오픈(stage === 'RESOLVED')된 이후에 비로소 카드를 깨뜨림
-      if (pScore > 21 && playerHand.length > 0 && stage === 'RESOLVED') {
+      // 플레이어 버스트 시 딜러 카드가 먼저 다 뒤집혀 오픈(rawStage === 'RESOLVED')된 이후에 비로소 카드를 깨뜨림
+      if (pScore > 21 && playerHand.length > 0 && rawStage === 'RESOLVED') {
         const lastCard = playerHand[playerHand.length - 1];
         const cardId = `P_${lastCard.id}`;
         const group = cardsMap.get(cardId);
@@ -218,17 +274,19 @@ export default function BlackjackCanvas({
         }
       }
     });
-  }, [playerHand, dealerHand, stage]);
+  }, [playerHand, dealerHand, rawStage]);
 
   // ─────────────────────────────────────────────
-  // Effect 3: 승패 포스트 프로세싱 제어
+  // Effect 3: 승패 비주얼 연출 (포스트 프로세싱 + 바닥 조명 효과)
   // ─────────────────────────────────────────────
   useEffect(() => {
     const pp = composerRef.current;
+    const scene = sceneRef.current;
     if (!pp) return;
     const { chromaPass } = pp;
 
-    if (winner === 'player') {
+    // 1. 색수차 포스트 프로세싱 제어 (승리 피드백 프리즘 왜곡 - 게임이 정산된 stage === 'RESOLVED' 상황에서만 발동하도록 가드 강제)
+    if (winner === 'player' && stage === 'RESOLVED') {
       // 플레이어 승리: 레인보우 색수차 프리즘 효과
       gsap.killTweensOf(chromaPass.uniforms.uAmount);
       chromaPass.uniforms.uAmount.value = 0;
@@ -236,11 +294,56 @@ export default function BlackjackCanvas({
         .to(chromaPass.uniforms.uAmount, { value: 0.035, duration: 0.3, ease: 'power2.out' })
         .to(chromaPass.uniforms.uAmount, { value: 0.0, duration: 1.5, ease: 'power1.inOut' });
     } else {
-      // 무승부, 패배(버스트 포함) 또는 게임 진행 중: 모든 효과 초기화 (글리치 노이즈 완전 제거)
+      // 무승부, 패배(버스트 포함) 또는 게임 진행 중: 모든 효과 초기화 (일반 상황 튐 버그 방지)
       gsap.killTweensOf(chromaPass.uniforms.uAmount);
       chromaPass.uniforms.uAmount.value = 0.0;
     }
+
+    // 2. 바닥 필드 조명 효과 제어 (승자 피드백 바닥 발광 - 연두색 시인성 극대화를 위해 opacity 0.22 상향)
+    if (scene) {
+      const pFloor = scene.getObjectByName('player_floor') as THREE.Mesh;
+      const dFloor = scene.getObjectByName('dealer_floor') as THREE.Mesh;
+
+      if (pFloor && dFloor) {
+        gsap.killTweensOf([pFloor.material, dFloor.material]);
+
+        if (stage === 'RESOLVED') {
+          if (winner === 'player') {
+            gsap.to(pFloor.material, { opacity: 0.22, duration: 0.8, ease: 'power2.out' });
+            gsap.to(dFloor.material, { opacity: 0.0, duration: 0.4, ease: 'power2.out' });
+          } else if (winner === 'dealer') {
+            gsap.to(dFloor.material, { opacity: 0.22, duration: 0.8, ease: 'power2.out' });
+            gsap.to(pFloor.material, { opacity: 0.0, duration: 0.4, ease: 'power2.out' });
+          } else if (winner === 'push') {
+            gsap.to([pFloor.material, dFloor.material], { opacity: 0.22, duration: 0.8, ease: 'power2.out' });
+          } else {
+            gsap.to([pFloor.material, dFloor.material], { opacity: 0.0, duration: 0.4, ease: 'power2.out' });
+          }
+        } else {
+          // 게임 진행 및 대기 중에는 바닥 조명을 완전히 끔
+          gsap.to([pFloor.material, dFloor.material], { opacity: 0.0, duration: 0.4, ease: 'power2.out' });
+        }
+      }
+    }
   }, [winner, stage]);
+
+  // ─────────────────────────────────────────────
+  // Effect 4: 3D 버튼 상태 갱신
+  // ─────────────────────────────────────────────
+  useEffect(() => {
+    if (buttonsRef.current) {
+      buttonsRef.current.updateButtonsState(stage, isAnimating);
+    }
+  }, [stage, isAnimating]);
+
+  // ─────────────────────────────────────────────
+  // Effect 5: 3D 전자시계 점수 갱신
+  // ─────────────────────────────────────────────
+  useEffect(() => {
+    if (clocksRef.current) {
+      clocksRef.current.updateScores(playerScore, dealerScore, stage);
+    }
+  }, [playerScore, dealerScore, stage]);
 
   return (
     <div

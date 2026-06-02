@@ -15,12 +15,8 @@ export function useBlackjack() {
     dispatch({ type: 'RESET_GAME' });
   }, []);
 
-  const placeBet = useCallback((amount: number) => {
-    dispatch({ type: 'PLACE_BET', payload: amount });
-  }, []);
-
-  const deal = useCallback(() => {
-    dispatch({ type: 'START_DEALING' });
+  const dealInitialCards = useCallback(() => {
+    dispatch({ type: 'DEAL_INITIAL_CARDS' });
   }, []);
 
   const hit = useCallback(() => {
@@ -29,10 +25,6 @@ export function useBlackjack() {
 
   const stand = useCallback(() => {
     dispatch({ type: 'STAND' });
-  }, []);
-
-  const doubleDown = useCallback(() => {
-    dispatch({ type: 'DOUBLE_DOWN' });
   }, []);
 
   const dealerDrawCard = useCallback(() => {
@@ -58,8 +50,6 @@ export function useBlackjack() {
     playerHand: state.playerHand,
     dealerHand: state.dealerHand,
     stage: state.stage,
-    bet: state.bet,
-    balance: state.balance,
     message: state.message,
     winner: state.winner,
     dealCount: state.dealCount,
@@ -70,11 +60,9 @@ export function useBlackjack() {
     
     // 액션 핸들러
     startNewGame,
-    placeBet,
-    deal,
+    dealInitialCards,
     hit,
     stand,
-    doubleDown,
     dealerDrawCard,
     resolveGame,
     resolveBust

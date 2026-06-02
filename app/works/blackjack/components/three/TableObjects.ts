@@ -11,6 +11,9 @@ export interface TableObjectsResult {
  * 카드 구역 가이드 박스(딜러/플레이어)와 덱 더미 오브젝트를 씬에 추가합니다.
  */
 export function createTableObjects(scene: THREE.Scene): TableObjectsResult {
+  const geomsToDispose: THREE.BufferGeometry[] = [];
+  const matsToDispose: THREE.Material[] = [];
+
   // 1. 카드 구역 가이드 박스 라인 (외각 테두리 단일 ShapeGeometry 면 구조)
   const borderThickness = 0.015; // 선 두께를 얇고 선명하게 조절 (기존 0.045에서 축소)
   const guideWidth = 6.5;
@@ -39,6 +42,7 @@ export function createTableObjects(scene: THREE.Scene): TableObjectsResult {
   shape.holes.push(hole);
 
   const guideGeo = new THREE.ShapeGeometry(shape);
+  geomsToDispose.push(guideGeo);
 
   const borderMat = new THREE.MeshBasicMaterial({
     color: '#FFFFFF',
@@ -46,13 +50,52 @@ export function createTableObjects(scene: THREE.Scene): TableObjectsResult {
     opacity: 0.40, // 얇아진 선에 맞추어 투명도 재조정 (0.55 -> 0.40)
     side: THREE.DoubleSide,
   });
+  matsToDispose.push(borderMat);
+
+  // 1-2. 승패 시 불이 켜질 바닥 판 메쉬 생성 (가이드 박스 내부 전체 영역)
+  const floorGeo = new THREE.PlaneGeometry(6.5, 2.6);
+  geomsToDispose.push(floorGeo);
+
+  const dFloorMat = new THREE.MeshBasicMaterial({
+    color: '#82ff93',
+    transparent: true,
+    opacity: 0.0,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  matsToDispose.push(dFloorMat);
+
+  const dealerFloor = new THREE.Mesh(floorGeo, dFloorMat);
+  dealerFloor.name = 'dealer_floor';
+  dealerFloor.renderOrder = 1;
+  dealerFloor.rotation.x = -Math.PI / 2;
+  dealerFloor.position.set(0, 0.005, -1.7);
+  scene.add(dealerFloor);
+
+  const pFloorMat = new THREE.MeshBasicMaterial({
+    color: '#82ff93',
+    transparent: true,
+    opacity: 0.0,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  matsToDispose.push(pFloorMat);
+
+  const playerFloor = new THREE.Mesh(floorGeo, pFloorMat);
+  playerFloor.name = 'player_floor';
+  playerFloor.renderOrder = 1;
+  playerFloor.rotation.x = -Math.PI / 2;
+  playerFloor.position.set(0, 0.005, 1.7);
+  scene.add(playerFloor);
 
   const dealerGuide = new THREE.Mesh(guideGeo, borderMat);
+  dealerGuide.renderOrder = 2;
   dealerGuide.rotation.x = -Math.PI / 2;
   dealerGuide.position.set(0, 0.01, -1.7);
   scene.add(dealerGuide);
 
   const playerGuide = new THREE.Mesh(guideGeo, borderMat);
+  playerGuide.renderOrder = 2;
   playerGuide.rotation.x = -Math.PI / 2;
   playerGuide.position.set(0, 0.01, 1.7);
   scene.add(playerGuide);
@@ -64,6 +107,7 @@ export function createTableObjects(scene: THREE.Scene): TableObjectsResult {
 
   // 덱 카드용 지오메트리 공유 생성
   const cardGeo = new RoundedBoxGeometry(CARD_WIDTH, CARD_HEIGHT, CARD_THICKNESS, 4, 0.05);
+  geomsToDispose.push(cardGeo);
 
   // 아래 쌓여있는 카드들의 연한 검정/차콜 종이 질감 재질
   const paperMat = new THREE.MeshStandardMaterial({
@@ -71,10 +115,9 @@ export function createTableObjects(scene: THREE.Scene): TableObjectsResult {
     roughness: 0.9,
     metalness: 0.05,
   });
+  matsToDispose.push(paperMat);
 
   const deckCount = 16; // 16장 레이어링으로 두께감 연출
-  const geomsToDispose: THREE.BufferGeometry[] = [guideGeo, cardGeo];
-  const matsToDispose: THREE.Material[] = [borderMat, paperMat];
 
   // 덱 맨 윗장 뒷면 데칼 텍스처 및 재질
   const backTex = createCardBackTexture();

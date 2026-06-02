@@ -18,7 +18,7 @@ export function createSceneSetup(container: HTMLDivElement): SceneSetupResult {
   // 씬 & 포그
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#000000');
-  scene.fog = new THREE.FogExp2('#000000', 0.06);
+  scene.fog = new THREE.FogExp2('#000000', 0.015);
 
   // 카메라
   const camera = new THREE.PerspectiveCamera(
@@ -44,7 +44,8 @@ export function createSceneSetup(container: HTMLDivElement): SceneSetupResult {
   controls.dampingFactor = 0.05;
   controls.maxPolarAngle = Math.PI / 2.15;
   controls.minDistance = 3.2;
-  controls.maxDistance = 11;
+  controls.maxDistance = 9.8; // 배경 감귤빛 노을 돔 이탈 방지를 위한 줌아웃 한계 단축
+  controls.enablePan = false; // 화면 수평 이동 차단 (바닥 밑 수몰 및 월드 탈출 방지)
   controls.target.set(0, 0, 0);
 
   // 광원 — 전반적인 3D 밝기를 중간값으로 조율하여 입체감과 눈보호 양립

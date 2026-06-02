@@ -7,15 +7,13 @@ export interface Card {
   dealOrder: number; // 딜링되는 순서 (애니메이션 순차 처리에 활용)
 }
 
-export type GameStage = 'READY' | 'BETTING' | 'DEALING' | 'PLAYER_TURN' | 'DEALER_TURN' | 'RESOLVED';
+export type GameStage = 'READY' | 'DEALING' | 'PLAYER_TURN' | 'DEALER_TURN' | 'RESOLVED';
 
 export interface BlackjackState {
   deck: Card[];
   playerHand: Card[];
   dealerHand: Card[];
   stage: GameStage;
-  bet: number;
-  balance: number;
   message: string;
   winner: 'player' | 'dealer' | 'push' | null;
   dealCount: number; // 지금까지 나눠준 카드 개수 (dealOrder 부여용)
@@ -93,9 +91,7 @@ export const INITIAL_STATE: BlackjackState = {
   playerHand: [],
   dealerHand: [],
   stage: 'READY',
-  bet: 0,
-  balance: 1000, // 기본 자금 $1000
-  message: '원하시는 배팅 금액을 설정하고 Deal을 누르세요.',
+  message: '게임을 시작하려면 바닥의 START 버튼을 누르세요.',
   winner: null,
   dealCount: 0,
 };
@@ -104,35 +100,21 @@ export const INITIAL_STATE: BlackjackState = {
 export const blackjackReducer = (state: BlackjackState, action: any): BlackjackState => {
   switch (action.type) {
     case 'RESET_GAME': {
+      const newDeck = shuffleDeck(createDeck());
       return {
         ...state,
-        deck: shuffleDeck(createDeck()),
+        deck: newDeck,
         playerHand: [],
         dealerHand: [],
-        stage: 'BETTING',
+        stage: 'DEALING',
         winner: null,
-        message: '배팅을 완료한 뒤 딜 버튼을 누르세요.',
+        message: '카드를 분배하는 중입니다...',
         dealCount: 0,
       };
     }
 
-    case 'PLACE_BET': {
-      if (state.stage !== 'BETTING') return state;
-      const amount = action.payload;
-      if (amount <= 0 || amount > state.balance) {
-        return { ...state, message: '올바르지 않은 배팅 금액입니다.' };
-      }
-      return {
-        ...state,
-        bet: amount,
-        message: `현재 배팅금: $${amount}. 게임을 시작하려면 Deal을 누르세요.`,
-      };
-    }
-
-    case 'START_DEALING': {
-      if (state.stage !== 'BETTING' || state.bet === 0) {
-        return { ...state, message: '배팅 금액을 먼저 설정해야 합니다!' };
-      }
+    case 'DEAL_INITIAL_CARDS': {
+      if (state.stage !== 'DEALING') return state;
 
       const newDeck = [...state.deck];
       const playerHand: Card[] = [];
@@ -156,14 +138,12 @@ export const blackjackReducer = (state: BlackjackState, action: any): BlackjackS
       dealerHand.push(d2);
 
       const playerScore = calculateHandScore(playerHand);
-      const dealerVisibleScore = calculateHandScore(dealerHand); // d2는 isHidden 상태이므로 제외됨
-
+      
       // 내추럴 블랙잭 여부 확인을 위해 임시로 딜러 전체 점수도 계산
       const dealerActualScore = calculateHandScore(dealerHand.map(c => ({ ...c, isHidden: false })));
 
       // 만약 플레이어가 내추럴 블랙잭인 경우 즉시 결과 판정 준비
       if (playerScore === 21) {
-        // 딜러의 숨겨진 카드를 오픈하여 승패 결정
         const revealedDealerHand = dealerHand.map(c => ({ ...c, isHidden: false }));
         
         if (dealerActualScore === 21) {
@@ -174,7 +154,6 @@ export const blackjackReducer = (state: BlackjackState, action: any): BlackjackS
             dealerHand: revealedDealerHand,
             stage: 'RESOLVED',
             winner: 'push',
-            balance: state.balance, // 배팅금 돌려받음
             message: '둘 다 블랙잭입니다! 무승부(Push)입니다.',
             dealCount,
           };
@@ -186,7 +165,6 @@ export const blackjackReducer = (state: BlackjackState, action: any): BlackjackS
             dealerHand: revealedDealerHand,
             stage: 'RESOLVED',
             winner: 'player',
-            balance: state.balance + Math.floor(state.bet * 1.5), // 블랙잭 1.5배 지급
             message: '블랙잭! 플레이어가 승리했습니다!',
             dealCount,
           };
@@ -199,7 +177,6 @@ export const blackjackReducer = (state: BlackjackState, action: any): BlackjackS
         playerHand,
         dealerHand,
         stage: 'PLAYER_TURN',
-        balance: state.balance - state.bet,
         message: `플레이어 차례입니다. (현재 점수: ${playerScore})`,
         dealCount,
       };
@@ -219,53 +196,6 @@ export const blackjackReducer = (state: BlackjackState, action: any): BlackjackS
         playerHand,
         message: `Hit 완료. 플레이어 차례입니다. (현재 점수: ${playerScore})`,
         dealCount: state.dealCount + 1,
-      };
-    }
-
-    case 'DOUBLE_DOWN': {
-      if (state.stage !== 'PLAYER_TURN') return state;
-      // 잔액이 추가 배팅금보다 충분해야 함
-      if (state.balance < state.bet) {
-        return { ...state, message: '더블 다운을 위한 추가 금액이 부족합니다.' };
-      }
-
-      const originalBet = state.bet;
-      const newDeck = [...state.deck];
-      const nextCard = { ...newDeck.pop()!, isHidden: false, dealOrder: state.dealCount };
-      const playerHand = [...state.playerHand, nextCard];
-      const playerScore = calculateHandScore(playerHand);
-
-      const updatedBalance = state.balance - originalBet; // 추가 배팅 차감
-      const updatedBet = originalBet * 2;
-
-      if (playerScore > 21) {
-        return {
-          ...state,
-          deck: newDeck,
-          playerHand,
-          bet: updatedBet,
-          balance: updatedBalance,
-          dealCount: state.dealCount + 1,
-          message: `더블 다운 완료. (현재 점수: ${playerScore})`,
-        };
-      }
-
-      // 더블 다운은 한 장만 추가하고 강제로 Stand 턴으로 이행
-      // 이 시점에서는 플레이어 턴이 끝나고 딜러가 동작하게 해야 함. 
-      // 코드가 즉시 딜러 턴으로 전환되도록 처리
-      const revealedDealer = state.dealerHand.map(c => ({ ...c, isHidden: false }));
-      const dealerScore = calculateHandScore(revealedDealer);
-
-      return {
-        ...state,
-        deck: newDeck,
-        playerHand,
-        bet: updatedBet,
-        balance: updatedBalance,
-        dealerHand: revealedDealer,
-        stage: 'DEALER_TURN',
-        dealCount: state.dealCount + 1,
-        message: `더블 다운 완료. 딜러 차례입니다. (현재 점수: ${dealerScore})`,
       };
     }
 
@@ -325,24 +255,19 @@ export const blackjackReducer = (state: BlackjackState, action: any): BlackjackS
       const dealerScore = calculateHandScore(state.dealerHand);
 
       let winner: BlackjackState['winner'] = null;
-      let payout = 0;
       let msg = '';
 
       if (dealerScore > 21) {
         winner = 'player';
-        payout = state.bet * 2;
         msg = `딜러 버스트! 플레이어가 승리했습니다! (최종 점수 - 플레이어: ${playerScore} vs 딜러: ${dealerScore})`;
       } else if (playerScore > dealerScore) {
         winner = 'player';
-        payout = state.bet * 2;
         msg = `플레이어 승리! (최종 점수 - 플레이어: ${playerScore} vs 딜러: ${dealerScore})`;
       } else if (playerScore < dealerScore) {
         winner = 'dealer';
-        payout = 0;
         msg = `딜러 승리! (최종 점수 - 플레이어: ${playerScore} vs 딜러: ${dealerScore})`;
       } else {
         winner = 'push';
-        payout = state.bet;
         msg = `무승부(Push)입니다. (최종 점수 - 플레이어: ${playerScore} vs 딜러: ${dealerScore})`;
       }
 
@@ -350,7 +275,6 @@ export const blackjackReducer = (state: BlackjackState, action: any): BlackjackS
         ...state,
         stage: 'RESOLVED',
         winner,
-        balance: state.balance + payout,
         message: msg,
       };
     }
