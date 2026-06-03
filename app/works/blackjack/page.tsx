@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import BackToMapButton from '../components/BackToMapButton';
 import { useBlackjack } from './hooks/useBlackjack';
 import { soundManager } from './logic/SoundManager';
 import { useTransitionContext } from '../../context/TransitionContext';
+import { PORTFOLIO_MAP } from '../../components/canvas/title/data';
 
 const BlackjackCanvas = dynamic(
   () => import('./components/BlackjackCanvas'),
@@ -13,11 +13,24 @@ const BlackjackCanvas = dynamic(
 );
 
 export default function BlackjackPage() {
-  const { holdTransition } = useTransitionContext();
+  const { holdTransition, startBackTransition } = useTransitionContext();
 
   useEffect(() => {
     holdTransition();
   }, [holdTransition]);
+
+  const handleBackToMap = () => {
+    let nodeColor = '#2C2C2C';
+    let nodeImg = '';
+    if (typeof window !== 'undefined') {
+      const savedFocused = sessionStorage.getItem('portfolio_focused_node');
+      if (savedFocused && PORTFOLIO_MAP[savedFocused]) {
+        nodeColor = PORTFOLIO_MAP[savedFocused].color || '#2C2C2C';
+        nodeImg = PORTFOLIO_MAP[savedFocused].img || '';
+      }
+    }
+    startBackTransition(nodeColor, nodeImg, '/');
+  };
 
   const {
     playerHand,
@@ -135,11 +148,6 @@ export default function BlackjackPage() {
       fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
       backgroundColor: '#000000' // 전체 배경 블랙
     }}>
-      {/* 맵으로 돌아가기 버튼 (Z-Index 부여하여 3D 화면 위에 노출) */}
-      <div style={{ position: 'absolute', top: '24px', left: '24px', zIndex: 100 }}>
-        <BackToMapButton />
-      </div>
-
       {/* 3D WebGL Canvas 영역 (전체 화면으로 덮음) */}
       <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 1 }}>
         <BlackjackCanvas
@@ -157,6 +165,7 @@ export default function BlackjackPage() {
           onAnimationStart={() => setIsAnimating(true)}
           onAnimationComplete={() => setIsAnimating(false)}
           onDealerBust={resolveGame}
+          onBack={handleBackToMap}
         />
       </div>
 

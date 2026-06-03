@@ -33,6 +33,7 @@ interface BlackjackCanvasProps {
   onAnimationStart?: () => void;
   onAnimationComplete?: () => void;
   onDealerBust?: () => void;
+  onBack?: () => void;
 }
 
 export default function BlackjackCanvas({
@@ -49,7 +50,8 @@ export default function BlackjackCanvas({
   onStart,
   onAnimationStart,
   onAnimationComplete,
-  onDealerBust
+  onDealerBust,
+  onBack
 }: BlackjackCanvasProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const { releaseTransition } = useTransitionContext();
@@ -104,7 +106,7 @@ export default function BlackjackCanvas({
     cardGeoRef.current = cardGeo;
     sideGlassMatRef.current = cardMat;
 
-    // 3D 버튼 생성 및 바인딩
+     // 3D 버튼 생성 및 바인딩
     const buttons3D = createButtons3D(
       scene,
       () => onHit(),
@@ -112,6 +114,9 @@ export default function BlackjackCanvas({
       () => {
         clearShatteredCards(scene); // 시작 시 깨진 유리 조각 즉시 제거
         onStart();
+      },
+      () => {
+        if (onBack) onBack();
       }
     );
     buttonsRef.current = buttons3D;

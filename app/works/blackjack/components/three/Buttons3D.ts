@@ -58,7 +58,8 @@ export function createButtons3D(
   scene: THREE.Scene,
   onHit: () => void,
   onStand: () => void,
-  onStart: () => void
+  onStart: () => void,
+  onBack: () => void
 ): Buttons3D {
   const buttonsGroup = new THREE.Group();
   scene.add(buttonsGroup);
@@ -75,6 +76,10 @@ export function createButtons3D(
     stand: {
       defaultX: 4.2,
       defaultZ: 2.575,
+    },
+    back: {
+      defaultX: 4.2,
+      defaultZ: -2.575, // 덱 위쪽 대칭 Z축 배치 (상대 필드 상단 경계선 정렬)
     }
   };
 
@@ -126,13 +131,34 @@ export function createButtons3D(
   standMesh.rotation.x = -Math.PI / 2;
   buttonsGroup.add(standMesh);
 
+  // 3. BACK 버튼 텍스처 & 재질 생성 (힛/스탠드와 100% 동일한 미니멀 디자인)
+  const backTex = createButtonTexture('BACK');
+  textures.push(backTex);
+
+  const backMat = new THREE.MeshBasicMaterial({
+    map: backTex,
+    transparent: true,
+    opacity: 0.50, // 초기 활성
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  materials.push(backMat);
+
+  const backMesh = new THREE.Mesh(planeGeo, backMat);
+  backMesh.name = 'back_body';
+  backMesh.renderOrder = 4;
+  backMesh.position.set(buttonsData.back.defaultX, 0.015, buttonsData.back.defaultZ);
+  backMesh.rotation.x = -Math.PI / 2;
+  buttonsGroup.add(backMesh);
+
   // 상호작용 가드 변수
   let hitActive = false;
   let standActive = false;
+  let backActive = true; // BACK 버튼은 언제든 활성화
   let currentHitRole: 'HIT' | 'START' = 'START';
 
   const raycaster = new THREE.Raycaster();
-  let hoveredButton: 'hit' | 'stand' | null = null;
+  let hoveredButton: 'hit' | 'stand' | 'back' | null = null;
 
   // ─────────────────────────────────────────────
   // 3. 상태 갱신 함수 (은은한 Opacity 조율)
@@ -141,10 +167,16 @@ export function createButtons3D(
     if (isAnimating) {
       hitActive = false;
       standActive = false;
+      backActive = false;
       gsap.to(hitMat, { opacity: 0.12, duration: 0.25 });
       gsap.to(standMat, { opacity: 0.12, duration: 0.25 });
+      gsap.to(backMat, { opacity: 0.12, duration: 0.25 });
       return;
     }
+
+    // BACK 버튼은 언제든 활성화
+    backActive = true;
+    gsap.to(backMat, { opacity: 0.50, duration: 0.3 });
 
     if (stage === 'PLAYER_TURN') {
       hitActive = true;
@@ -182,7 +214,7 @@ export function createButtons3D(
     }
 
     raycaster.setFromCamera(pointer, camera);
-    const intersects = raycaster.intersectObjects([hitMesh, standMesh]);
+    const intersects = raycaster.intersectObjects([hitMesh, standMesh, backMesh]);
 
     if (intersects.length > 0) {
       const clickedMesh = intersects[0].object;
@@ -193,9 +225,8 @@ export function createButtons3D(
           gsap.to(hitMat, { opacity: 0.85, duration: 0.2 });
           document.body.style.cursor = 'pointer';
         }
-        if (standActive) {
-          gsap.to(standMat, { opacity: 0.50, duration: 0.2 });
-        }
+        if (standActive) gsap.to(standMat, { opacity: 0.50, duration: 0.2 });
+        if (backActive) gsap.to(backMat, { opacity: 0.50, duration: 0.2 });
       } else if (clickedMesh.name === 'stand_body' && standActive) {
         if (hoveredButton !== 'stand') {
           hoveredButton = 'stand';
@@ -203,9 +234,17 @@ export function createButtons3D(
           gsap.to(standMat, { opacity: 0.85, duration: 0.2 });
           document.body.style.cursor = 'pointer';
         }
-        if (hitActive) {
-          gsap.to(hitMat, { opacity: 0.50, duration: 0.2 });
+        if (hitActive) gsap.to(hitMat, { opacity: 0.50, duration: 0.2 });
+        if (backActive) gsap.to(backMat, { opacity: 0.50, duration: 0.2 });
+      } else if (clickedMesh.name === 'back_body' && backActive) {
+        if (hoveredButton !== 'back') {
+          hoveredButton = 'back';
+          soundManager.init();
+          gsap.to(backMat, { opacity: 0.85, duration: 0.2 });
+          document.body.style.cursor = 'pointer';
         }
+        if (hitActive) gsap.to(hitMat, { opacity: 0.50, duration: 0.2 });
+        if (standActive) gsap.to(standMat, { opacity: 0.50, duration: 0.2 });
       } else {
         clearHover();
       }
@@ -218,12 +257,9 @@ export function createButtons3D(
     if (hoveredButton) {
       hoveredButton = null;
       document.body.style.cursor = 'default';
-      if (hitActive) {
-        gsap.to(hitMat, { opacity: 0.50, duration: 0.2 });
-      }
-      if (standActive) {
-        gsap.to(standMat, { opacity: 0.50, duration: 0.2 });
-      }
+      if (hitActive) gsap.to(hitMat, { opacity: 0.50, duration: 0.2 });
+      if (standActive) gsap.to(standMat, { opacity: 0.50, duration: 0.2 });
+      if (backActive) gsap.to(backMat, { opacity: 0.50, duration: 0.2 });
     }
   };
 
@@ -234,7 +270,7 @@ export function createButtons3D(
     if (pointer.x === -9999) return;
 
     raycaster.setFromCamera(pointer, camera);
-    const intersects = raycaster.intersectObjects([hitMesh, standMesh]);
+    const intersects = raycaster.intersectObjects([hitMesh, standMesh, backMesh]);
 
     if (intersects.length > 0) {
       const clickedMesh = intersects[0].object;
@@ -249,6 +285,9 @@ export function createButtons3D(
       } else if (clickedMesh.name === 'stand_body' && standActive) {
         soundManager.playClick();
         onStand();
+      } else if (clickedMesh.name === 'back_body' && backActive) {
+        soundManager.playClick();
+        onBack();
       }
     }
   };
