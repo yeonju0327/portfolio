@@ -15,6 +15,98 @@ const SUIT_COLORS: Record<string, string> = {
   clubs: '#000000', // 쨍한 검은색 원색
 };
 
+// 각 숫자별 문양 중심 좌표 반환 (1024x1536 기준)
+const getSuitPositions = (value: string): [number, number][] => {
+  const L = 340;
+  const R = 684;
+  const C = 512;
+  
+  const Y1 = 380;
+  const Y2 = 574;
+  const Y3 = 768;
+  const Y4 = 962;
+  const Y5 = 1156;
+
+  switch (value) {
+    case '2':
+      return [[C, Y1], [C, Y5]];
+    case '3':
+      return [[C, Y1], [C, Y3], [C, Y5]];
+    case '4':
+      return [
+        [L, Y1], [R, Y1],
+        [L, Y5], [R, Y5]
+      ];
+    case '5':
+      return [
+        [L, Y1], [R, Y1],
+        [C, Y3],
+        [L, Y5], [R, Y5]
+      ];
+    case '6':
+      return [
+        [L, Y1], [R, Y1],
+        [L, Y3], [R, Y3],
+        [L, Y5], [R, Y5]
+      ];
+    case '7':
+      return [
+        [L, Y1], [R, Y1],
+        [C, Y2],
+        [L, Y3], [R, Y3],
+        [L, Y5], [R, Y5]
+      ];
+    case '8':
+      return [
+        [L, Y1], [R, Y1],
+        [C, Y2],
+        [L, Y3], [R, Y3],
+        [C, Y4],
+        [L, Y5], [R, Y5]
+      ];
+    case '9':
+      return [
+        [L, Y1], [R, Y1],
+        [L, Y2], [R, Y2],
+        [C, Y3],
+        [L, Y4], [R, Y4],
+        [L, Y5], [R, Y5]
+      ];
+    case '10':
+      return [
+        [L, Y1], [R, Y1],
+        [C, 509],
+        [L, 638], [R, 638],
+        [L, 898], [R, 898],
+        [C, 1027],
+        [L, Y5], [R, Y5]
+      ];
+    default:
+      return [];
+  }
+};
+
+// 각 숫자별 적절한 문양 크기 반환 (겹침 방지 및 최대 크기 확보)
+const getSuitFontSize = (value: string): number => {
+  switch (value) {
+    case '2':
+    case '3':
+      return 260; // 개수가 적을 때는 260px로 크게 노출
+    case '4':
+    case '5':
+      return 230;
+    case '6':
+    case '7':
+    case '8':
+      return 200;
+    case '9':
+    case '10':
+      return 175; // 겹치지 않게 175px
+    default:
+      return 150;
+  }
+};
+
 // 1. 카드 앞면(Face) 텍스처 생성 (1024x1536 고해상도)
 export const createCardFaceTexture = (value: string, suit: string): THREE.CanvasTexture | null => {
   if (typeof document === 'undefined') return null;
@@ -54,19 +146,64 @@ export const createCardFaceTexture = (value: string, suit: string): THREE.Canvas
   ctx.fillText(symbol, 0, 120);
   ctx.restore();
 
-  // 중앙 커다란 문양 드로잉 (2x 스케일) - 그림자 블러 제거로 경계선 극단 선명화
-  ctx.save();
-  ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.scale(1.05, 0.95);
-  ctx.font = '440px Arial, sans-serif';
-  ctx.fillText(symbol, 0, 0);
-  ctx.restore();
+  const isFaceCard = ['A', 'J', 'Q', 'K'].includes(value);
 
   // Three.js 텍스처로 변환 및 고품질 필터 적용
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.generateMipmaps = true;
+
+  if (isFaceCard) {
+    if (value === 'A') {
+      // A 카드: 로고 없이 문양만 크게 650px로 드로잉
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.scale(1.05, 0.95);
+      ctx.font = '650px Arial, sans-serif';
+      ctx.fillText(symbol, 0, 0);
+      ctx.restore();
+    } else {
+      // J, Q, K 카드: 문양 이미지 없음, 로고만 650px 크기로 중앙에 렌더링
+      // 스페이드/클로버는 검은색, 하트/다이아몬드는 빨간색
+      const logoColor = (suit === 'spades' || suit === 'clubs') ? '#000000' : '#FF0000';
+      const img = new Image();
+      img.src = '/images/gongwon_white.png';
+      img.onload = () => {
+        const tempCanvas = document.createElement('canvas');
+        const logoSize = 650;
+        tempCanvas.width = logoSize;
+        tempCanvas.height = logoSize;
+        const tempCtx = tempCanvas.getContext('2d');
+        if (tempCtx) {
+          tempCtx.drawImage(img, 0, 0, logoSize, logoSize);
+          tempCtx.globalCompositeOperation = 'source-in';
+          tempCtx.fillStyle = logoColor;
+          tempCtx.fillRect(0, 0, logoSize, logoSize);
+
+          ctx.save();
+          ctx.drawImage(tempCanvas, canvas.width / 2 - logoSize / 2, canvas.height / 2 - logoSize / 2, logoSize, logoSize);
+          ctx.restore();
+          texture.needsUpdate = true;
+        }
+      };
+    }
+  } else {
+    // 숫자 카드: 기호 개수를 숫자에 맞추어 그리드로 렌더링
+    const positions = getSuitPositions(value);
+    const fontSize = getSuitFontSize(value);
+    ctx.font = `${fontSize}px Arial, sans-serif`;
+    positions.forEach(([x, y]) => {
+      ctx.save();
+      ctx.translate(x, y);
+      if (y > 768) {
+        ctx.rotate(Math.PI); // 하단 영역에 위치한 문양은 거꾸로 180도 회전
+      }
+      ctx.fillText(symbol, 0, 0);
+      ctx.restore();
+    });
+  }
+
   return texture;
 };
 
@@ -173,17 +310,60 @@ export const createCardFaceTransmissionMap = (value: string, suit: string): THRE
   ctx.fillText(symbol, 0, 120);
   ctx.restore();
 
-  // 중앙 커다란 문양 (2x 크기)
-  ctx.save();
-  ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.scale(1.05, 0.95);
-  ctx.font = '440px Arial, sans-serif';
-  ctx.fillText(symbol, 0, 0);
-  ctx.restore();
+  const isFaceCard = ['A', 'J', 'Q', 'K'].includes(value);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.generateMipmaps = true;
+
+  if (isFaceCard) {
+    if (value === 'A') {
+      // A 카드: 문양만 크게 650px로 드로잉
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.scale(1.05, 0.95);
+      ctx.font = '650px Arial, sans-serif';
+      ctx.fillText(symbol, 0, 0);
+      ctx.restore();
+    } else {
+      // J, Q, K 카드: 문양 이미지 없음, 로고만 650px 크기로 중앙에 검은색 실루엣 마스킹 처리
+      const img = new Image();
+      img.src = '/images/gongwon_white.png';
+      img.onload = () => {
+        const tempCanvas = document.createElement('canvas');
+        const logoSize = 650;
+        tempCanvas.width = logoSize;
+        tempCanvas.height = logoSize;
+        const tempCtx = tempCanvas.getContext('2d');
+        if (tempCtx) {
+          tempCtx.drawImage(img, 0, 0, logoSize, logoSize);
+          tempCtx.globalCompositeOperation = 'source-in';
+          tempCtx.fillStyle = '#000000'; // 마스크는 언제나 검은색
+          tempCtx.fillRect(0, 0, logoSize, logoSize);
+
+          ctx.save();
+          ctx.drawImage(tempCanvas, canvas.width / 2 - logoSize / 2, canvas.height / 2 - logoSize / 2, logoSize, logoSize);
+          ctx.restore();
+          texture.needsUpdate = true;
+        }
+      };
+    }
+  } else {
+    // 숫자 카드: 기호 개수를 숫자에 맞추어 그리드로 렌더링
+    const positions = getSuitPositions(value);
+    const fontSize = getSuitFontSize(value);
+    ctx.font = `${fontSize}px Arial, sans-serif`;
+    positions.forEach(([x, y]) => {
+      ctx.save();
+      ctx.translate(x, y);
+      if (y > 768) {
+        ctx.rotate(Math.PI);
+      }
+      ctx.fillText(symbol, 0, 0);
+      ctx.restore();
+    });
+  }
+
   return texture;
 };
