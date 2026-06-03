@@ -8,6 +8,7 @@ export interface Buttons3D {
   tick: (camera: THREE.Camera, pointer: THREE.Vector2) => void;
   handlePointerDown: (camera: THREE.Camera, pointer: THREE.Vector2) => string | null;
   handlePointerUp: (camera: THREE.Camera, pointer: THREE.Vector2, pressedButtonName: string | null) => void;
+  triggerVisualFeedback: (buttonName: 'hit' | 'stand' | 'back') => void;
   dispose: () => void;
 }
 
@@ -313,6 +314,29 @@ export function createButtons3D(
     }
   };
 
+  const triggerVisualFeedback = (buttonName: 'hit' | 'stand' | 'back') => {
+    let targetMat: THREE.MeshBasicMaterial | null = null;
+    let targetActive = false;
+
+    if (buttonName === 'hit') {
+      targetMat = hitMat;
+      targetActive = hitActive;
+    } else if (buttonName === 'stand') {
+      targetMat = standMat;
+      targetActive = standActive;
+    } else if (buttonName === 'back') {
+      targetMat = backMat;
+      targetActive = backActive;
+    }
+
+    if (targetMat && targetActive) {
+      soundManager.playClick();
+      gsap.killTweensOf(targetMat);
+      targetMat.opacity = 0.85;
+      gsap.to(targetMat, { opacity: 0.50, duration: 0.15 });
+    }
+  };
+
   // ─────────────────────────────────────────────
   // 6. 리소스 해제
   // ─────────────────────────────────────────────
@@ -329,6 +353,7 @@ export function createButtons3D(
     tick,
     handlePointerDown,
     handlePointerUp,
+    triggerVisualFeedback,
     dispose
   };
 }

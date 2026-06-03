@@ -56,6 +56,22 @@ export default function BlackjackCanvas({
   const mountRef = useRef<HTMLDivElement>(null);
   const { releaseTransition } = useTransitionContext();
 
+  // keydown 이벤트 스태일 클로저 방지용 Ref
+  const stageRef = useRef(stage);
+  const isAnimatingRef = useRef(isAnimating);
+  const onHitRef = useRef(onHit);
+  const onStandRef = useRef(onStand);
+  const onStartRef = useRef(onStart);
+  const onBackRef = useRef(onBack);
+
+  // 렌더링 시점에 최신 값 동기화
+  stageRef.current = stage;
+  isAnimatingRef.current = isAnimating;
+  onHitRef.current = onHit;
+  onStandRef.current = onStand;
+  onStartRef.current = onStart;
+  onBackRef.current = onBack;
+
   // Three.js 핵심 ref (각 모듈의 dispose 함수 접근용)
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -162,6 +178,37 @@ export default function BlackjackCanvas({
     container.addEventListener('pointerdown', handlePointerDown);
     container.addEventListener('pointerup', handlePointerUp);
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isAnimatingRef.current || !buttonsRef.current) return;
+
+      const code = event.code;
+
+      if (code === 'Space') {
+        event.preventDefault();
+        const currentStage = stageRef.current;
+        if (currentStage === 'PLAYER_TURN') {
+          buttonsRef.current.triggerVisualFeedback('hit');
+          onHitRef.current();
+        } else if (currentStage === 'READY' || currentStage === 'RESOLVED') {
+          buttonsRef.current.triggerVisualFeedback('hit');
+          onStartRef.current();
+        }
+      } else if (code === 'KeyS') {
+        const currentStage = stageRef.current;
+        if (currentStage === 'PLAYER_TURN') {
+          buttonsRef.current.triggerVisualFeedback('stand');
+          onStandRef.current();
+        }
+      } else if (code === 'Escape') {
+        event.preventDefault();
+        if (onBackRef.current) {
+          buttonsRef.current.triggerVisualFeedback('back');
+          onBackRef.current();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
     // HDR 환경맵 비동기 로딩
     const envRefs = loadEnvironment({
       scene,
@@ -224,6 +271,7 @@ export default function BlackjackCanvas({
       window.removeEventListener('resize', handleResize);
       container.removeEventListener('pointerdown', handlePointerDown);
       container.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('keydown', handleKeyDown);
       hover.dispose();
       disposeTable();
       buttons3D.dispose();
