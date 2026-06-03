@@ -125,16 +125,42 @@ export default function BlackjackCanvas({
     const clocks3D = createClocks3D(scene);
     clocksRef.current = clocks3D;
 
-    // 3D 버튼 클릭 마우스/터치 리스너 연결
+    // 3D 버튼 클릭 마우스/터치 리스너 연결 (PointerUp 및 드래그 제어)
+    let startX = 0;
+    let startY = 0;
+    let pressedButton: string | null = null;
+
     const handlePointerDown = (event: PointerEvent) => {
       if (!cameraRef.current || !buttonsRef.current) return;
       const rect = container.getBoundingClientRect();
       const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       const pointer = new THREE.Vector2(x, y);
-      buttonsRef.current.handlePointerDown(cameraRef.current, pointer);
+
+      startX = event.clientX;
+      startY = event.clientY;
+      pressedButton = buttonsRef.current.handlePointerDown(cameraRef.current, pointer);
     };
+
+    const handlePointerUp = (event: PointerEvent) => {
+      if (!cameraRef.current || !buttonsRef.current || !pressedButton) return;
+
+      const rect = container.getBoundingClientRect();
+      const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      const pointer = new THREE.Vector2(x, y);
+
+      // 드래그 거리 판별 (이동 거리가 8픽셀 이상이면 드래그 상태로 간주하여 취소)
+      const dist = Math.hypot(event.clientX - startX, event.clientY - startY);
+      if (dist < 8) {
+        buttonsRef.current.handlePointerUp(cameraRef.current, pointer, pressedButton);
+      }
+
+      pressedButton = null;
+    };
+
     container.addEventListener('pointerdown', handlePointerDown);
+    container.addEventListener('pointerup', handlePointerUp);
 
     // HDR 환경맵 비동기 로딩
     const envRefs = loadEnvironment({
@@ -197,6 +223,7 @@ export default function BlackjackCanvas({
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
       container.removeEventListener('pointerdown', handlePointerDown);
+      container.removeEventListener('pointerup', handlePointerUp);
       hover.dispose();
       disposeTable();
       buttons3D.dispose();

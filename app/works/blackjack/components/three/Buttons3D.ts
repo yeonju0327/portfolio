@@ -6,7 +6,8 @@ import { CARD_WIDTH } from './CardBuilder';
 export interface Buttons3D {
   updateButtonsState: (stage: string, isAnimating: boolean) => void;
   tick: (camera: THREE.Camera, pointer: THREE.Vector2) => void;
-  handlePointerDown: (camera: THREE.Camera, pointer: THREE.Vector2) => void;
+  handlePointerDown: (camera: THREE.Camera, pointer: THREE.Vector2) => string | null;
+  handlePointerUp: (camera: THREE.Camera, pointer: THREE.Vector2, pressedButtonName: string | null) => void;
   dispose: () => void;
 }
 
@@ -264,10 +265,29 @@ export function createButtons3D(
   };
 
   // ─────────────────────────────────────────────
-  // 5. 클릭 핸들러 (즉시 콜백 실행)
+  // 5. 클릭 핸들러 (다운 및 업으로 이분화)
   // ─────────────────────────────────────────────
-  const handlePointerDown = (camera: THREE.Camera, pointer: THREE.Vector2) => {
-    if (pointer.x === -9999) return;
+  const handlePointerDown = (camera: THREE.Camera, pointer: THREE.Vector2): string | null => {
+    if (pointer.x === -9999) return null;
+
+    raycaster.setFromCamera(pointer, camera);
+    const intersects = raycaster.intersectObjects([hitMesh, standMesh, backMesh]);
+
+    if (intersects.length > 0) {
+      const clickedMesh = intersects[0].object;
+      if (clickedMesh.name === 'hit_body' && hitActive) {
+        return 'hit';
+      } else if (clickedMesh.name === 'stand_body' && standActive) {
+        return 'stand';
+      } else if (clickedMesh.name === 'back_body' && backActive) {
+        return 'back';
+      }
+    }
+    return null;
+  };
+
+  const handlePointerUp = (camera: THREE.Camera, pointer: THREE.Vector2, pressedButtonName: string | null) => {
+    if (pointer.x === -9999 || !pressedButtonName) return;
 
     raycaster.setFromCamera(pointer, camera);
     const intersects = raycaster.intersectObjects([hitMesh, standMesh, backMesh]);
@@ -275,17 +295,18 @@ export function createButtons3D(
     if (intersects.length > 0) {
       const clickedMesh = intersects[0].object;
       
-      if (clickedMesh.name === 'hit_body' && hitActive) {
+      // 떼는 시점에도 마우스가 동일한 버튼 위에 위치하고 활성화 상태인지 검증
+      if (clickedMesh.name === 'hit_body' && pressedButtonName === 'hit' && hitActive) {
         soundManager.playClick();
         if (currentHitRole === 'HIT') {
           onHit();
         } else {
           onStart();
         }
-      } else if (clickedMesh.name === 'stand_body' && standActive) {
+      } else if (clickedMesh.name === 'stand_body' && pressedButtonName === 'stand' && standActive) {
         soundManager.playClick();
         onStand();
-      } else if (clickedMesh.name === 'back_body' && backActive) {
+      } else if (clickedMesh.name === 'back_body' && pressedButtonName === 'back' && backActive) {
         soundManager.playClick();
         onBack();
       }
@@ -307,6 +328,7 @@ export function createButtons3D(
     updateButtonsState,
     tick,
     handlePointerDown,
+    handlePointerUp,
     dispose
   };
 }
