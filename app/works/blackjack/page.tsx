@@ -48,8 +48,9 @@ export default function BlackjackPage() {
   // 애니메이션이 끝나거나, 대기 상태일 때 즉각적으로 UI 상태를 동기화
   useEffect(() => {
     const isPlayerBustResolved = stage === 'RESOLVED' && winner === 'dealer' && playerScore > 21;
+    const isDealerBustResolved = stage === 'RESOLVED' && winner === 'player' && dealerScore > 21;
 
-    if (!isAnimating || stage === 'READY' || isPlayerBustResolved) {
+    if (!isAnimating || stage === 'READY' || isPlayerBustResolved || isDealerBustResolved) {
       setDisplayedStage(stage);
       setDisplayedMessage(message);
       setDisplayedWinner(winner);
@@ -149,12 +150,13 @@ export default function BlackjackPage() {
           winner={displayedWinner}
           playerScore={displayedPlayerScore}
           dealerScore={displayedDealerScore}
-          isAnimating={isAnimating}
+          isAnimating={isAnimating || (stage === 'PLAYER_TURN' && playerScore > 21)}
           onHit={handleHit}
           onStand={handleStand}
           onStart={handleStartGame}
           onAnimationStart={() => setIsAnimating(true)}
           onAnimationComplete={() => setIsAnimating(false)}
+          onDealerBust={resolveGame}
         />
       </div>
 

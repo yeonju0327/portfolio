@@ -184,6 +184,7 @@ export const blackjackReducer = (state: BlackjackState, action: any): BlackjackS
 
     case 'HIT': {
       if (state.stage !== 'PLAYER_TURN') return state;
+      if (calculateHandScore(state.playerHand) > 21) return state;
 
       const newDeck = [...state.deck];
       const nextCard = { ...newDeck.pop()!, isHidden: false, dealOrder: state.dealCount };
@@ -201,6 +202,7 @@ export const blackjackReducer = (state: BlackjackState, action: any): BlackjackS
 
     case 'STAND': {
       if (state.stage !== 'PLAYER_TURN') return state;
+      if (calculateHandScore(state.playerHand) > 21) return state;
       
       // 딜러의 숨겨진 카드를 공개 상태로 변경하고 stage를 DEALER_TURN으로 보냄
       const revealedDealerHand = state.dealerHand.map((c) => ({ ...c, isHidden: false }));

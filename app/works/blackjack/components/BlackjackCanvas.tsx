@@ -32,6 +32,7 @@ interface BlackjackCanvasProps {
   onStart: () => void;
   onAnimationStart?: () => void;
   onAnimationComplete?: () => void;
+  onDealerBust?: () => void;
 }
 
 export default function BlackjackCanvas({
@@ -47,7 +48,8 @@ export default function BlackjackCanvas({
   onStand,
   onStart,
   onAnimationStart,
-  onAnimationComplete
+  onAnimationComplete,
+  onDealerBust
 }: BlackjackCanvasProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const { releaseTransition } = useTransitionContext();
@@ -238,7 +240,6 @@ export default function BlackjackCanvas({
       // 딜링/뒤집기 애니메이션 완료 직후 버스트 여부 검사
       const pScore = calculateHandScore(playerHand);
       const dScore = calculateHandScore(dealerHand);
-      const shatterPromises: Promise<void>[] = [];
 
       // 플레이어 버스트 시 딜러 카드가 먼저 다 뒤집혀 오픈(rawStage === 'RESOLVED')된 이후에 비로소 카드를 깨뜨림
       if (pScore > 21 && playerHand.length > 0 && rawStage === 'RESOLVED') {
@@ -247,7 +248,12 @@ export default function BlackjackCanvas({
         const group = cardsMap.get(cardId);
         if (group && !group.userData.hasShattered) {
           group.userData.hasShattered = true;
-          shatterPromises.push(shatterCard(group, scene));
+          shatterCard(group, scene).then(() => {
+            if (onAnimationComplete) {
+              onAnimationComplete();
+            }
+          });
+          return;
         }
       }
 
@@ -257,21 +263,25 @@ export default function BlackjackCanvas({
         const group = cardsMap.get(cardId);
         if (group && !group.userData.hasShattered) {
           group.userData.hasShattered = true;
-          shatterPromises.push(shatterCard(group, scene));
+
+          // 1. 선 UI 반영: 딜러 버스트 정산 콜백을 즉시 호출
+          if (onDealerBust) {
+            onDealerBust();
+          }
+
+          // 2. 즉시 깨짐 애니메이션 진행 및 락 해제
+          shatterCard(group, scene).then(() => {
+            if (onAnimationComplete) {
+              onAnimationComplete();
+            }
+          });
+          return;
         }
       }
 
-      // 유리 조각 비산(Shattering) 효과가 있으면 완료를 대기한 후 UI 락 해제
-      if (shatterPromises.length > 0) {
-        Promise.all(shatterPromises).then(() => {
-          if (onAnimationComplete) {
-            onAnimationComplete();
-          }
-        });
-      } else {
-        if (onAnimationComplete) {
-          onAnimationComplete();
-        }
+      // 버스트 효과가 없는 일반적인 완료 처리
+      if (onAnimationComplete) {
+        onAnimationComplete();
       }
     });
   }, [playerHand, dealerHand, rawStage]);
@@ -305,27 +315,55 @@ export default function BlackjackCanvas({
       const dFloor = scene.getObjectByName('dealer_floor') as THREE.Mesh;
 
       if (pFloor && dFloor) {
-        gsap.killTweensOf([pFloor.material, dFloor.material]);
+        const pFloorMat = pFloor.material as THREE.MeshBasicMaterial;
+        const dFloorMat = dFloor.material as THREE.MeshBasicMaterial;
+
+        gsap.killTweensOf([pFloorMat, dFloorMat, pFloorMat.color, dFloorMat.color]);
 
         if (stage === 'RESOLVED') {
+          // 플레이어가 처음 2장으로 21점(내추럴 블랙잭)을 얻어 승리/무승부했을 때는 쨍한 노란빛(#ffff00), 그 외에는 기본 연두색(#82ff93)
+          const isBlackjack = playerScore === 21 && playerHand.length === 2;
+          const targetColorHex = isBlackjack ? '#ffff00' : '#82ff93';
+          const targetColor = new THREE.Color(targetColorHex);
+          const defaultColor = new THREE.Color('#82ff93');
+
           if (winner === 'player') {
-            gsap.to(pFloor.material, { opacity: 0.22, duration: 0.8, ease: 'power2.out' });
-            gsap.to(dFloor.material, { opacity: 0.0, duration: 0.4, ease: 'power2.out' });
+            // 플레이어 구역: 골드 또는 연두색 트랜지션
+            gsap.to(pFloorMat.color, { r: targetColor.r, g: targetColor.g, b: targetColor.b, duration: 0.6, ease: 'power2.out' });
+            gsap.to(pFloorMat, { opacity: 0.22, duration: 0.8, ease: 'power2.out' });
+            
+            // 딜러 구역: 조명 끔
+            gsap.to(dFloorMat.color, { r: defaultColor.r, g: defaultColor.g, b: defaultColor.b, duration: 0.4, ease: 'power2.out' });
+            gsap.to(dFloorMat, { opacity: 0.0, duration: 0.4, ease: 'power2.out' });
           } else if (winner === 'dealer') {
-            gsap.to(dFloor.material, { opacity: 0.22, duration: 0.8, ease: 'power2.out' });
-            gsap.to(pFloor.material, { opacity: 0.0, duration: 0.4, ease: 'power2.out' });
+            // 딜러 구역: 연두색 불 켜짐
+            gsap.to(dFloorMat.color, { r: defaultColor.r, g: defaultColor.g, b: defaultColor.b, duration: 0.6, ease: 'power2.out' });
+            gsap.to(dFloorMat, { opacity: 0.22, duration: 0.8, ease: 'power2.out' });
+            
+            // 플레이어 구역: 조명 끔
+            gsap.to(pFloorMat.color, { r: defaultColor.r, g: defaultColor.g, b: defaultColor.b, duration: 0.4, ease: 'power2.out' });
+            gsap.to(pFloorMat, { opacity: 0.0, duration: 0.4, ease: 'power2.out' });
           } else if (winner === 'push') {
-            gsap.to([pFloor.material, dFloor.material], { opacity: 0.22, duration: 0.8, ease: 'power2.out' });
+            // 양쪽 모두 켜짐 (블랙잭 무승부면 황금빛, 아니면 연두색)
+            gsap.to(pFloorMat.color, { r: targetColor.r, g: targetColor.g, b: targetColor.b, duration: 0.6, ease: 'power2.out' });
+            gsap.to(dFloorMat.color, { r: targetColor.r, g: targetColor.g, b: targetColor.b, duration: 0.6, ease: 'power2.out' });
+            gsap.to([pFloorMat, dFloorMat], { opacity: 0.22, duration: 0.8, ease: 'power2.out' });
           } else {
-            gsap.to([pFloor.material, dFloor.material], { opacity: 0.0, duration: 0.4, ease: 'power2.out' });
+            // 그 외 정산 결과: 조명 끔
+            gsap.to(pFloorMat.color, { r: defaultColor.r, g: defaultColor.g, b: defaultColor.b, duration: 0.4, ease: 'power2.out' });
+            gsap.to(dFloorMat.color, { r: defaultColor.r, g: defaultColor.g, b: defaultColor.b, duration: 0.4, ease: 'power2.out' });
+            gsap.to([pFloorMat, dFloorMat], { opacity: 0.0, duration: 0.4, ease: 'power2.out' });
           }
         } else {
-          // 게임 진행 및 대기 중에는 바닥 조명을 완전히 끔
-          gsap.to([pFloor.material, dFloor.material], { opacity: 0.0, duration: 0.4, ease: 'power2.out' });
+          // 게임 진행 및 대기 중에는 바닥 조명을 완전히 끄고 기본 색상(연두색)으로 원복
+          const defaultColor = new THREE.Color('#82ff93');
+          gsap.to(pFloorMat.color, { r: defaultColor.r, g: defaultColor.g, b: defaultColor.b, duration: 0.4, ease: 'power2.out' });
+          gsap.to(dFloorMat.color, { r: defaultColor.r, g: defaultColor.g, b: defaultColor.b, duration: 0.4, ease: 'power2.out' });
+          gsap.to([pFloorMat, dFloorMat], { opacity: 0.0, duration: 0.4, ease: 'power2.out' });
         }
       }
     }
-  }, [winner, stage]);
+  }, [winner, stage, playerScore]);
 
   // ─────────────────────────────────────────────
   // Effect 4: 3D 버튼 상태 갱신
