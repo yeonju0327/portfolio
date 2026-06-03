@@ -1,8 +1,10 @@
 class SoundManager {
   private ctx: AudioContext | null = null;
+  private muted: boolean = true; // 전역 음소거 플래그 (효과음 전면 비활성화)
 
   // 1. 오디오 컨텍스트 초기화 (사용자 인터랙션 직후 호출 필요)
   public init() {
+    if (this.muted) return;
     if (this.ctx) return;
     try {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -16,6 +18,7 @@ class SoundManager {
 
   // 오디오 상태 안전 재개
   private resumeContext() {
+    if (this.muted) return;
     this.init();
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume();
@@ -24,6 +27,7 @@ class SoundManager {
 
   // 2. 카드가 날아갈 때의 미끄러지는 둔탁한 소리 합성 (Sliding Sound)
   public playSlide() {
+    if (this.muted) return;
     this.resumeContext();
     if (!this.ctx) return;
 
@@ -66,6 +70,7 @@ class SoundManager {
 
   // 3. 유리 블록이 부딪힐 때의 맑고 둔탁한 타격음 합성 (Glass Clink Sound)
   public playClink() {
+    if (this.muted) return;
     this.resumeContext();
     if (!this.ctx) return;
 
@@ -134,6 +139,7 @@ class SoundManager {
 
   // 3-5. 3D 물리 버튼 클릭용 짧고 둔탁한 타격음 합성 (Button Click Sound)
   public playClick() {
+    if (this.muted) return;
     this.resumeContext();
     if (!this.ctx) return;
 
@@ -183,6 +189,7 @@ class SoundManager {
 
   // 4. 유리가 깨질 때의 쨍그랑하는 파편 소리 합성 (Glass Shattering Sound)
   public playShatter() {
+    if (this.muted) return;
     this.resumeContext();
     if (!this.ctx) return;
 

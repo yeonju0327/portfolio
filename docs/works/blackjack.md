@@ -16,7 +16,7 @@
 * **Core Framework:** Next.js (App Router), React
 * **3D Rendering & WebGL:** Three.js (Vanilla Three.js Integration)
 * **Animation:** GSAP (GreenSock Animation Platform) for physics-like tweens, rotations, and UI transitions
-* **Audio:** Web Audio API (or basic HTML5 Audio) for heavy glass sliding/colliding physical sound effects
+* **Audio:** Web Audio API 기반의 오디오 합성 파이프라인 (현재는 미니멀하고 정갈한 3D 환경의 몰입감을 극대화하기 위해 전면 무음/Muted 비활성화 처리됨)
 
 ---
 

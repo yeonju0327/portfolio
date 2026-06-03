@@ -278,3 +278,10 @@
   - **Ref 기반 렌더링 싱크 패턴**: 컴포넌트 바디에 `stageRef`, `isAnimatingRef`, `onHitRef` 등 상태 및 콜백 전용 `useRef`를 각각 선언하고, 렌더링 틱마다 최신 값으로 동기화했습니다. 리스너 내부에서는 이 Ref들의 최신 `.current` 값을 조회하게 구성하여 이벤트 리스너를 매번 재등록하는 VRAM/렌더러 오버헤드 없이 스태일 클로저 버그를 완전히 소멸시켰습니다.
   - **기본 동작 차단(`preventDefault`)**: 스페이스바와 ESC 단축키 분기 내에 명시적으로 `event.preventDefault()`를 주입하여 스크린 스크롤 및 브라우저 탈출 기본 액션을 깔끔하게 통제했습니다.
   - **3D 씬 피드백 역방향 연동**: 단축키 입력 시 단순 콜백 호출만 하는 것이 아니라, 3D 버튼 인스턴스에 `triggerVisualFeedback`을 전달해 해당 버튼의 불투명도를 일시적으로 `0.85`로 트윈했다 복구하고 3D 공간 상에서 클릭 효과음이 터지도록 설계함으로써, 키보드 조작과 WebGL 씬의 아날로그 조작적 일치감을 보장했습니다.
+
+## 35. 분산된 오디오 리소스 제어 시 싱글톤 매니저 가드를 통한 무결성 묵음 처리 (Mute)
+* **현상**: 여러 3D 씬 및 애니메이션 트윈 파일(`CardAnimator.ts`, `Buttons3D.ts`, `page.tsx` 등) 전역에 걸쳐 효과음 재생 기능(`soundManager.playClick()`, `playClink()`, `playShatter()` 등)이 조밀하게 바인딩되어 있는 상태에서, 사운드 효과음을 전부 제거하라는 요구가 있었습니다. 이를 개별 파일마다 찾아가며 임포트 및 호출 라인을 일일이 주석 처리하거나 삭제하면, 코드 수정 범위가 대폭 늘어나며 누락이 발생하거나 렌더링 루프 등과 얽혀 예기치 않은 런타임 크래시가 유발될 가능성이 컸습니다.
+* **해결책**:
+  - **싱글톤 매니저 내부 가딩**: 오디오 합성을 담당하는 단일 통제 파일([SoundManager.ts](file:///c:/Users/SOGANG/portfolio/app/works/blackjack/logic/SoundManager.ts))에 프라이빗 멤버 플래그 `muted = true`를 선언했습니다.
+  - **메서드 초입 전방위 차단**: `init()`, `resumeContext()`, 그리고 개별 오실레이터 합성 재생 메서드(`playSlide()`, `playClink()`, `playClick()`, `playShatter()`)의 최상단에 `if (this.muted) return;` 가드 문을 주입했습니다.
+  - 이로써 비즈니스 로직 및 컴포넌트 파일의 어떠한 구조적 훼손도 없이, 브라우저 Web Audio Context 생성 자체를 애초에 원천 차단하고 사운드를 안전하게 일괄 비활성화(Zero-overhead Mute)하여 높은 설계 우아함을 실현했습니다.
