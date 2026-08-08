@@ -1,13 +1,138 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { gsap } from 'gsap';
 import { MAGAZINE_ISSUES, MagazineIssue } from '../data/magazines';
+import { soundManager } from './SoundManager';
 
 interface ArchTableViewProps {
   onSelectIssue: (issueId: number) => void;
+  lastSelectedIssueId?: number | null;
 }
 
-export default function ArchTableView({ onSelectIssue }: ArchTableViewProps) {
+export default function ArchTableView({
+  onSelectIssue,
+  lastSelectedIssueId = null,
+}: ArchTableViewProps) {
+  const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const isAnimatingRef = useRef(false);
+
+  // e-book에서 아치 뷰로 돌아올 때 역방향 복원 애니메이션 연출
+  useEffect(() => {
+    if (lastSelectedIssueId === null) return;
+
+    const lastIdx = MAGAZINE_ISSUES.findIndex(issue => issue.id === lastSelectedIssueId);
+    if (lastIdx === -1) return;
+
+    isAnimatingRef.current = true;
+
+    // 초기 위치 설정 (이탈되었던 위치에서 출발)
+    cardsRef.current.forEach((cardEl, idx) => {
+      if (!cardEl) return;
+      if (idx < lastIdx) {
+        gsap.set(cardEl, { x: '-100vw', y: 40, rotation: -15, opacity: 0 });
+      } else if (idx > lastIdx) {
+        gsap.set(cardEl, { x: '100vw', y: 40, rotation: 15, opacity: 0 });
+      } else {
+        gsap.set(cardEl, { x: 0, y: -20, scale: 1.3, rotation: 0, opacity: 1, zIndex: 100 });
+      }
+    });
+
+    // 복원 타임라인 실행
+    const tl = gsap.timeline({
+      onComplete: () => {
+        cardsRef.current.forEach((cardEl, idx) => {
+          if (!cardEl) return;
+          const total = MAGAZINE_ISSUES.length;
+          const originalZIndex = (total - idx) * 10;
+          gsap.set(cardEl, { zIndex: originalZIndex });
+        });
+        isAnimatingRef.current = false;
+      },
+    });
+
+    cardsRef.current.forEach((cardEl) => {
+      if (!cardEl) return;
+      tl.to(
+        cardEl,
+        {
+          x: 0,
+          y: 0,
+          scale: 1,
+          rotation: 0,
+          opacity: 1,
+          duration: 0.6,
+          ease: 'power3.out',
+        },
+        0
+      );
+    });
+  }, [lastSelectedIssueId]);
+
+  // 클릭 시 표지별 스와이프 이탈 및 선택 표지 중앙 확대
+  const handleSelectCard = (issue: MagazineIssue, selectedIdx: number) => {
+    if (isAnimatingRef.current) return;
+    isAnimatingRef.current = true;
+
+    soundManager.playPaperTurn();
+
+    const tl = gsap.timeline({
+      onComplete: () => {
+        onSelectIssue(issue.id);
+      },
+    });
+
+    cardsRef.current.forEach((cardEl, idx) => {
+      if (!cardEl) return;
+
+      if (idx < selectedIdx) {
+        // 선택한 표지보다 왼쪽에 있는 표지들: 왼쪽 밖으로 스와이프 이탈
+        tl.to(
+          cardEl,
+          {
+            x: '-120vw',
+            y: 50,
+            rotation: -15,
+            opacity: 0,
+            duration: 0.5,
+            ease: 'power2.in',
+          },
+          0
+        );
+      } else if (idx > selectedIdx) {
+        // 선택한 표지보다 오른쪽에 있는 표지들: 오른쪽 밖으로 스와이프 이탈
+        tl.to(
+          cardEl,
+          {
+            x: '120vw',
+            y: 50,
+            rotation: 15,
+            opacity: 0,
+            duration: 0.5,
+            ease: 'power2.in',
+          },
+          0
+        );
+      } else {
+        // 선택한 표지: zIndex 최상단, 화면 중앙으로 이동 및 확대
+        gsap.set(cardEl, { zIndex: 100 });
+        tl.to(
+          cardEl,
+          {
+            x: 0,
+            y: -20,
+            rotation: 0,
+            scale: 1.35,
+            opacity: 1,
+            duration: 0.55,
+            ease: 'power3.out',
+          },
+          0
+        );
+      }
+    });
+  };
+
   return (
     <div
       style={{
@@ -65,15 +190,28 @@ export default function ArchTableView({ onSelectIssue }: ArchTableViewProps) {
           const zIndex = (total - idx) * 10;
 
           return (
-            <ArchMagazineCard
+            <div
               key={issue.id}
-              issue={issue}
-              rotateZ={rotateZ}
-              translateY={translateY}
-              translateX={translateX}
-              zIndex={zIndex}
-              onClick={() => onSelectIssue(issue.id)}
-            />
+              ref={(el) => {
+                cardsRef.current[idx] = el;
+              }}
+              style={{
+                position: 'relative',
+                width: '265px',
+                margin: '0 -22px',
+                cursor: 'pointer',
+                perspective: '1200px',
+                zIndex: zIndex,
+                transformOrigin: 'bottom center',
+                transform: `translate(${translateX}px, ${translateY}px) rotate(${rotateZ}deg)`,
+                willChange: 'transform, opacity',
+              }}
+            >
+              <ArchMagazineCardInner
+                issue={issue}
+                onClick={() => handleSelectCard(issue, idx)}
+              />
+            </div>
           );
         })}
       </div>
@@ -97,23 +235,12 @@ export default function ArchTableView({ onSelectIssue }: ArchTableViewProps) {
   );
 }
 
-interface ArchMagazineCardProps {
+interface ArchMagazineCardInnerProps {
   issue: MagazineIssue;
-  rotateZ: number;
-  translateY: number;
-  translateX: number;
-  zIndex: number;
   onClick: () => void;
 }
 
-function ArchMagazineCard({
-  issue,
-  rotateZ,
-  translateY,
-  translateX,
-  zIndex,
-  onClick,
-}: ArchMagazineCardProps) {
+function ArchMagazineCardInner({ issue, onClick }: ArchMagazineCardInnerProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
 
@@ -123,18 +250,9 @@ function ArchMagazineCard({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{
-        position: 'relative',
-        width: '265px',
-        margin: '0 -22px',
-        cursor: 'pointer',
-        perspective: '1200px',
-        zIndex: zIndex,
-        transformOrigin: 'bottom center',
-        transform: isHovered
-          ? `translate(${translateX}px, ${translateY}px) rotate(${rotateZ}deg) scale(1.08)`
-          : `translate(${translateX}px, ${translateY}px) rotate(${rotateZ}deg) scale(1)`,
-        transition: 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.6s cubic-bezier(0.22, 1, 0.36, 1)',
-        willChange: 'transform',
+        width: '100%',
+        transform: isHovered ? 'scale(1.08)' : 'scale(1)',
+        transition: 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
       }}
     >
       {/* 깔끔한 직사각형 1080 * 1350 (4:5) 이미지 카드 */}
@@ -150,7 +268,7 @@ function ArchMagazineCard({
             ? '0 28px 56px rgba(0, 0, 0, 0.22), 0 10px 20px rgba(0, 0, 0, 0.14)'
             : '0 16px 36px rgba(0, 0, 0, 0.16), 0 6px 12px rgba(0, 0, 0, 0.1)',
           boxSizing: 'border-box',
-          transition: 'box-shadow 0.6s cubic-bezier(0.22, 1, 0.36, 1)',
+          transition: 'box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
         }}
       >
         {issue.coverImage && !imgError ? (
@@ -190,3 +308,4 @@ function ArchMagazineCard({
     </div>
   );
 }
+
