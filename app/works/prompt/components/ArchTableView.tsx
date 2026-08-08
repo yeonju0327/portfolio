@@ -47,7 +47,8 @@ export default function ArchTableView({
       } else if (idx > lastIdx) {
         gsap.set(cardEl, { x: '100vw', y: baseY + 40, rotation: baseRotate + 15, opacity: 0 });
       } else {
-        gsap.set(cardEl, { x: 0, y: 0, scale: 1.35, rotation: 0, opacity: 1, zIndex: 100 });
+        const targetX = (2 - lastIdx) * 221;
+        gsap.set(cardEl, { x: targetX, y: 0, scale: 2.15, rotation: 0, opacity: 1, zIndex: 100 });
       }
     });
 
@@ -144,15 +145,16 @@ export default function ArchTableView({
           0
         );
       } else {
-        // 선택한 표지: zIndex 최상단, 화면 중앙으로 이동 및 확대
+        // 선택한 표지: zIndex 최상단, 정확한 화면 dead-center로 이동 및 scale 2.15 확대
+        const targetX = (2 - selectedIdx) * 221;
         gsap.set(cardEl, { zIndex: 100 });
         tl.to(
           cardEl,
           {
-            x: 0,
+            x: targetX,
             y: 0,
             rotation: 0,
-            scale: 1.35,
+            scale: 2.15,
             opacity: 1,
             duration: 0.55,
             ease: 'power3.out',

@@ -90,7 +90,7 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
     <div
       style={{
         position: 'relative',
-        width: '357.75px',
+        width: '569.75px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -207,85 +207,6 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
           }}
           title="다음 페이지 (▶)"
         />
-      </div>
-
-      {/* 매거진 조작 하단 대시보드 */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          width: '100%',
-          marginTop: '20px',
-          padding: '12px 20px',
-          background: 'rgba(30, 22, 16, 0.85)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: '30px',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-          boxSizing: 'border-box',
-        }}
-      >
-        <button
-          onClick={handlePrevPage}
-          disabled={currentPageIndex === 0 || isFlipping}
-          style={{
-            background: currentPageIndex === 0 ? 'rgba(255,255,255,0.05)' : issue.themeColor,
-            color: currentPageIndex === 0 ? 'rgba(255,255,255,0.2)' : '#FFFFFF',
-            border: 'none',
-            borderRadius: '20px',
-            padding: '8px 18px',
-            fontSize: '0.9rem',
-            fontWeight: 700,
-            cursor: currentPageIndex === 0 ? 'not-allowed' : 'pointer',
-            transition: 'all 0.2s ease',
-            fontFamily: "'Inter', sans-serif",
-          }}
-        >
-          ◀ 이전
-        </button>
-
-        <div style={{ textAlign: 'center' }}>
-          <span
-            style={{
-              color: '#FFFFFF',
-              fontWeight: 800,
-              fontSize: '1rem',
-              fontFamily: "'Inter', sans-serif",
-            }}
-          >
-            {currentPageIndex + 1} / {totalPages}
-          </span>
-          <span
-            style={{
-              marginLeft: '8px',
-              color: 'rgba(255,255,255,0.5)',
-              fontSize: '0.8rem',
-              fontFamily: "'Nanum Myeongjo', serif",
-            }}
-          >
-            (클릭 시 확대 감상)
-          </span>
-        </div>
-
-        <button
-          onClick={handleNextPage}
-          disabled={currentPageIndex === totalPages - 1 || isFlipping}
-          style={{
-            background: currentPageIndex === totalPages - 1 ? 'rgba(255,255,255,0.05)' : issue.themeColor,
-            color: currentPageIndex === totalPages - 1 ? 'rgba(255,255,255,0.2)' : '#FFFFFF',
-            border: 'none',
-            borderRadius: '20px',
-            padding: '8px 18px',
-            fontSize: '0.9rem',
-            fontWeight: 700,
-            cursor: currentPageIndex === totalPages - 1 ? 'not-allowed' : 'pointer',
-            transition: 'all 0.2s ease',
-            fontFamily: "'Inter', sans-serif",
-          }}
-        >
-          다음 ▶
-        </button>
       </div>
 
       {/* 페이지 세부 확대 모달 */}

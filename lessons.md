@@ -285,3 +285,13 @@
   - **싱글톤 매니저 내부 가딩**: 오디오 합성을 담당하는 단일 통제 파일([SoundManager.ts](file:///c:/Users/SOGANG/portfolio/app/works/blackjack/logic/SoundManager.ts))에 프라이빗 멤버 플래그 `muted = true`를 선언했습니다.
   - **메서드 초입 전방위 차단**: `init()`, `resumeContext()`, 그리고 개별 오실레이터 합성 재생 메서드(`playSlide()`, `playClink()`, `playClick()`, `playShatter()`)의 최상단에 `if (this.muted) return;` 가드 문을 주입했습니다.
   - 이로써 비즈니스 로직 및 컴포넌트 파일의 어떠한 구조적 훼손도 없이, 브라우저 Web Audio Context 생성 자체를 애초에 원천 차단하고 사운드를 안전하게 일괄 비활성화(Zero-overhead Mute)하여 높은 설계 우아함을 실현했습니다.
+
+## 36. Flex-Row 나열 요소의 GSAP Zoom 확대 시 Flex Offset 보정 및 화면 전환(1:1 Scale & Position Sync) 순간이동 해소
+* **현상**: 메인 아치/테이블 뷰(`ArchTableView.tsx`)에서 Flex Row로 배치된 카드 중 정중앙이 아닌 좌/우 카드(Vol 1, Vol 5 등)를 클릭할 때, GSAP 애니메이션으로 `x: 0`을 지정하더라도 카드가 컨테이너 정중앙이 아닌 자식 요소의 원래 Flex 오프셋 위치에서 확대되고, 이후 e-book 뷰어(`PageFlipReader.tsx`)로 컴포넌트가 교체(Mount/Unmount)되는 순간 정중앙으로 갑자기 위치와 크기가 튀는 순간이동(Teleportation) 현상이 유발되었습니다.
+* **원인**:
+  1. `display: flex` 컨테이너 내 개별 자식 요소는 컨테이너 중앙 기준 상대 좌표가 0이 아니라 고유의 layout offset(예: `(idx - centerIndex) * itemSpacing`)을 가지고 있습니다. 단순 GSAP `x: 0`은 자신의 flex 배치 지점을 의미하므로 정중앙으로 이동하지 못했습니다.
+  2. 메인 페이지 표지의 Zoom scale(`1.35`)과 e-book 뷰어의 기본 너비(`maxWidth: 850px` 혹은 `357.75px`) 규격이 서로 불일치하여, React State 변화로 뷰 컴포넌트가 스위칭되는 순간 해상도 및 위치 격차에 따른 시각적 튐이 생겼습니다.
+* **해결책**:
+  1. **Flex Offset 역산 보정 공식 도입**: 각 요소의 flex center relative offset `(idx - mid) * spacing`의 역부호인 `targetX = (mid - idx) * spacing` (예: `(2 - selectedIdx) * 221px`)을 GSAP 타깃 `x` 좌표로 부여하여, 어떤 카드를 클릭하더라도 정확히 화면 dead-center(`x: 0, y: 0` relative to viewport)로 부드럽게 글라이딩 확대되도록 설계했습니다.
+  2. **1:1 연속 규격 정렬 (`scale: 2.15` & `569.75px`)**: 메인 표지의 확대 target scale을 `2.15` (가로 `569.75px` × 세로 `712.19px`)로 맞추고, e-book 뷰어(`PageFlipReader.tsx`)의 컨테이너 규격도 동일한 `569.75px`로 맞춤으로써 화면 전환 시 0.1px의 이질감도 없는 100% 심리스(Seamless) 연속 트랜지션을 완수했습니다.
+
