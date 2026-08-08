@@ -23,7 +23,7 @@ export default function ArchTableView({ onSelectIssue }: ArchTableViewProps) {
         overflow: 'hidden',
       }}
     >
-      {/* 매트 화이트 모노톤 테이블 조명 (Matte Warm Desk Ambient Light) */}
+      {/* 테이블 은은한 스튜디오 모노톤 조명 */}
       <div
         style={{
           position: 'absolute',
@@ -38,7 +38,7 @@ export default function ArchTableView({ onSelectIssue }: ArchTableViewProps) {
         }}
       />
 
-      {/* 아치형 매거진 배치 컨테이너 (Arch Arc Magazine Layout) */}
+      {/* 아치형 직사각형 매거진 이미지 배치 컨테이너 */}
       <div
         style={{
           position: 'relative',
@@ -46,8 +46,8 @@ export default function ArchTableView({ onSelectIssue }: ArchTableViewProps) {
           justifyContent: 'center',
           alignItems: 'center',
           width: '100%',
-          maxWidth: '1200px',
-          height: '520px',
+          maxWidth: '1300px',
+          height: '560px',
           zIndex: 2,
         }}
       >
@@ -56,10 +56,13 @@ export default function ArchTableView({ onSelectIssue }: ArchTableViewProps) {
           const mid = (total - 1) / 2; // mid index = 2
           const diff = idx - mid; // -2, -1, 0, 1, 2
 
-          // 아치형 수직/회전 곡선 계산
+          // 완만한 아치형 수직/회전 곡선 계산
           const rotateZ = diff * 5.5; // -11deg, -5.5deg, 0deg, 5.5deg, 11deg
-          const translateY = Math.pow(Math.abs(diff), 1.7) * 14; // 0px, 14px, 45px
-          const translateX = diff * 12; // 수평 조율
+          const translateY = Math.pow(Math.abs(diff), 1.7) * 14;
+          const translateX = diff * 10;
+
+          // 레이어 순서: 왼쪽(idx=0)이 가장 위, 오른쪽으로 갈수록 아래로 포개짐
+          const zIndex = (total - idx) * 10;
 
           return (
             <ArchMagazineCard
@@ -68,14 +71,14 @@ export default function ArchTableView({ onSelectIssue }: ArchTableViewProps) {
               rotateZ={rotateZ}
               translateY={translateY}
               translateX={translateX}
-              zIndex={10 - Math.abs(diff)}
+              zIndex={zIndex}
               onClick={() => onSelectIssue(issue.id)}
             />
           );
         })}
       </div>
 
-      {/* 테이블 하단 수평 아날로그 소프트 섀도우 (Table Surface Ambient Shadow) */}
+      {/* 테이블 하단 소프트 섀도우 */}
       <div
         style={{
           position: 'absolute',
@@ -121,37 +124,37 @@ function ArchMagazineCard({
       onMouseLeave={() => setIsHovered(false)}
       style={{
         position: 'relative',
-        width: '210px',
-        margin: '0 -15px', // 아치형 포개짐 수평 간격
+        width: '265px',
+        margin: '0 -22px',
         cursor: 'pointer',
         perspective: '1200px',
-        zIndex: isHovered ? 50 : zIndex,
+        zIndex: zIndex,
+        transformOrigin: 'bottom center',
         transform: isHovered
-          ? `translate(${translateX}px, ${translateY - 32}px) rotate(0deg) scale(1.08)`
+          ? `translate(${translateX}px, ${translateY}px) rotate(${rotateZ}deg) scale(1.08)`
           : `translate(${translateX}px, ${translateY}px) rotate(${rotateZ}deg) scale(1)`,
-        transition: 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+        transition: 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.6s cubic-bezier(0.22, 1, 0.36, 1)',
         willChange: 'transform',
       }}
     >
-      {/* exact 1080 * 1350 (4:5) 아치형 매거진 커버 카드 */}
+      {/* 깔끔한 직사각형 1080 * 1350 (4:5) 이미지 카드 */}
       <div
         style={{
           position: 'relative',
           width: '100%',
           aspectRatio: '4 / 5',
           backgroundColor: issue.coverBg || '#FFFFFF',
-          borderRadius: '4px 10px 10px 4px',
+          borderRadius: '0px',
           overflow: 'hidden',
           boxShadow: isHovered
-            ? '0 32px 64px rgba(0, 0, 0, 0.28), 0 12px 24px rgba(0, 0, 0, 0.18)'
+            ? '0 28px 56px rgba(0, 0, 0, 0.22), 0 10px 20px rgba(0, 0, 0, 0.14)'
             : '0 16px 36px rgba(0, 0, 0, 0.16), 0 6px 12px rgba(0, 0, 0, 0.1)',
-          borderLeft: '4px solid rgba(0, 0, 0, 0.1)',
           boxSizing: 'border-box',
-          transition: 'box-shadow 0.35s ease',
+          transition: 'box-shadow 0.6s cubic-bezier(0.22, 1, 0.36, 1)',
         }}
       >
         {issue.coverImage && !imgError ? (
-          /* 실제 1080x1350 매거진 이미지 렌더링 */
+          /* 실제 1080x1350 직사각형 이미지 렌더링 */
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={issue.coverImage}
@@ -162,6 +165,7 @@ function ArchMagazineCard({
               height: '100%',
               objectFit: 'cover',
               display: 'block',
+              borderRadius: '0px',
             }}
           />
         ) : (
@@ -182,35 +186,6 @@ function ArchMagazineCard({
             VOL.0{issue.vol}
           </div>
         )}
-
-        {/* 표면 하이라이트 종이 광택 (Paper Surface Gloss) */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: isHovered
-              ? 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0) 60%)'
-              : 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 70%)',
-            pointerEvents: 'none',
-            transition: 'background 0.3s ease',
-          }}
-        />
-
-        {/* 좌측 책등 접힘 미세 수직 그림자 (Spine Crease Shadow) */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '6px',
-            height: '100%',
-            background: 'linear-gradient(90deg, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0) 100%)',
-            pointerEvents: 'none',
-          }}
-        />
       </div>
     </div>
   );
