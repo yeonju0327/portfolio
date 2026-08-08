@@ -16,6 +16,7 @@ export default function ArchTableView({
 }: ArchTableViewProps) {
   const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
   const isAnimatingRef = useRef(false);
+  const [selectedCardId, setSelectedCardId] = useState<number | null>(null);
 
   // 각 매거진 카드의 아치형 기본 좌표 및 회전각 계산
   const getArchParams = (idx: number) => {
@@ -37,11 +38,12 @@ export default function ArchTableView({
     if (lastIdx === -1) return;
 
     isAnimatingRef.current = true;
+    setSelectedCardId(lastSelectedIssueId);
 
     // 초기 위치 설정 (이탈되었던 위치에서 출발)
     cardsRef.current.forEach((cardEl, idx) => {
       if (!cardEl) return;
-      const { baseRotate, baseY, baseX } = getArchParams(idx);
+      const { baseRotate, baseY } = getArchParams(idx);
       if (idx < lastIdx) {
         gsap.set(cardEl, { x: '-100vw', y: baseY + 40, rotation: baseRotate - 15, opacity: 0 });
       } else if (idx > lastIdx) {
@@ -60,6 +62,7 @@ export default function ArchTableView({
           const { zIndex } = getArchParams(idx);
           gsap.set(cardEl, { zIndex });
         });
+        setSelectedCardId(null);
         isAnimatingRef.current = false;
       },
     });
@@ -103,6 +106,7 @@ export default function ArchTableView({
   const handleSelectCard = (issue: MagazineIssue, selectedIdx: number) => {
     if (isAnimatingRef.current) return;
     isAnimatingRef.current = true;
+    setSelectedCardId(issue.id);
 
     soundManager.playPaperTurn();
 
@@ -210,6 +214,7 @@ export default function ArchTableView({
       >
         {MAGAZINE_ISSUES.map((issue: MagazineIssue, idx: number) => {
           const { zIndex } = getArchParams(idx);
+          const isSelected = selectedCardId === issue.id;
 
           return (
             <div
@@ -229,6 +234,7 @@ export default function ArchTableView({
             >
               <ArchMagazineCardInner
                 issue={issue}
+                isSelected={isSelected}
                 onClick={() => handleSelectCard(issue, idx)}
               />
             </div>
@@ -257,12 +263,15 @@ export default function ArchTableView({
 
 interface ArchMagazineCardInnerProps {
   issue: MagazineIssue;
+  isSelected?: boolean;
   onClick: () => void;
 }
 
-function ArchMagazineCardInner({ issue, onClick }: ArchMagazineCardInnerProps) {
+function ArchMagazineCardInner({ issue, isSelected = false, onClick }: ArchMagazineCardInnerProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
+
+  const showHover = isHovered && !isSelected;
 
   return (
     <div
@@ -271,9 +280,9 @@ function ArchMagazineCardInner({ issue, onClick }: ArchMagazineCardInnerProps) {
       onMouseLeave={() => setIsHovered(false)}
       style={{
         width: '100%',
-        transformOrigin: 'bottom center', // 아래쪽 축 고정 (아래방향 확대 방지, 위쪽으로만 확장)
-        transform: isHovered ? 'scale(1.08)' : 'scale(1)',
-        transition: 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)', // '쭈욱' 늘어나는 0.6초 이징 커브
+        transformOrigin: 'bottom center', // 아래쪽 축 고정
+        transform: showHover ? 'scale(1.08)' : 'scale(1)',
+        transition: showHover ? 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)' : 'transform 0.15s ease-out',
         willChange: 'transform',
       }}
     >

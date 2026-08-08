@@ -166,20 +166,6 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
           </div>
         )}
 
-        {/* 책등 수직 곡면 깊이 그림자 (Spine Crease Depth) */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '16px',
-            height: '100%',
-            background: 'linear-gradient(90deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0) 100%)',
-            pointerEvents: 'none',
-            zIndex: 5,
-          }}
-        />
-
         {/* 좌우 종이 넘기기 터치 핫스팟 */}
         <div
           onClick={handlePrevPage}

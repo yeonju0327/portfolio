@@ -295,3 +295,13 @@
   1. **Flex Offset 역산 보정 공식 도입**: 각 요소의 flex center relative offset `(idx - mid) * spacing`의 역부호인 `targetX = (mid - idx) * spacing` (예: `(2 - selectedIdx) * 221px`)을 GSAP 타깃 `x` 좌표로 부여하여, 어떤 카드를 클릭하더라도 정확히 화면 dead-center(`x: 0, y: 0` relative to viewport)로 부드럽게 글라이딩 확대되도록 설계했습니다.
   2. **1:1 연속 규격 정렬 (`scale: 2.15` & `569.75px`)**: 메인 표지의 확대 target scale을 `2.15` (가로 `569.75px` × 세로 `712.19px`)로 맞추고, e-book 뷰어(`PageFlipReader.tsx`)의 컨테이너 규격도 동일한 `569.75px`로 맞춤으로써 화면 전환 시 0.1px의 이질감도 없는 100% 심리스(Seamless) 연속 트랜지션을 완수했습니다.
 
+## 37. 자식 레이아웃 호버 배율 잔상(Scale Multiplier Residual)에 의한 뷰 스위칭 0.08배 크기 오차 해결
+* **현상**: 메인 뷰에서 카드 클릭 시 GSAP 타깃 scale을 `2.15` (569.75px)로 정확히 맞추어 확대 애니메이션을 완료했음에도 불구하고, 화면이 e-book 뷰어(`569.75px`)로 스위칭되는 순간 메인 페이지의 최종 이미지가 e-book 시작 이미지보다 약 8% 살짝 더 크게 부풀어 올랐다가 줄어드는 미세한 튐 버그가 여전히 관찰되었습니다.
+* **원인**:
+  - 마우스로 표지를 클릭할 때 커서가 표지 상단에 위치하여 자식 컴포넌트(`ArchMagazineCardInner`)의 로컬 hover 상태 `isHovered = true` 가 활성화된 채로 GSAP 애니메이션이 진행되었습니다.
+  - 이로 인해 외각 레이어 GSAP scale `2.15`와 내부 자식 레이어 `transform: scale(1.08)`이 곱해지면서 ($2.15 \times 1.08 = 2.322$), 화면상에는 $265\text{px} \times 2.322 = 615.33\text{px}$ 로 약 8% 더 크게 확대되었고, 스위칭되는 e-book 뷰어($569.75\text{px}$)와 크기 격차가 생겼던 것입니다.
+* **해결책**:
+  - `ArchMagazineCardInner` 컴포넌트에 `isSelected` prop을 주입하여, 클릭하여 확대가 시작되는 순간 `showHover = isHovered && !isSelected` 조건식으로 내부 호버 배율 `scale(1.08)`을 즉시 해제하고 `scale(1.0)`로 고정했습니다.
+  - 이로써 메인 뷰 확대 최종 크기($569.75\text{px}$)와 e-book 뷰어 렌더링 크기($569.75\text{px}$)를 0.1px 오차도 없이 1:1로 완벽히 일치시켜 100% 미세 튐이 소멸된 트랜지션을 완수했습니다.
+
+
