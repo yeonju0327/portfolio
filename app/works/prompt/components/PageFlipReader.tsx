@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MagazineIssue, MagazinePage } from '../data/magazines';
 import { soundManager } from './SoundManager';
 
@@ -9,7 +9,7 @@ interface PageFlipReaderProps {
 }
 
 export default function PageFlipReader({ issue }: PageFlipReaderProps) {
-  // 현재 펼쳐진 페이지 인덱스 (0: Cover & Page 1 spread or Cover spread)
+  // 현재 펼쳐진 페이지 인덱스 (0: 1페이지부터 시작)
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [isFlipping, setIsFlipping] = useState(false);
   const [flipDirection, setFlipDirection] = useState<'next' | 'prev'>('next');
@@ -24,9 +24,8 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
     setIsFlipping(true);
     setFlipDirection('next');
 
-    // 60FPS GSAP-style smooth flip animation loop
     let start: number | null = null;
-    const duration = 500; // ms
+    const duration = 450; // ms
 
     const animate = (timestamp: number) => {
       if (!start) start = timestamp;
@@ -52,7 +51,7 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
     setFlipDirection('prev');
 
     let start: number | null = null;
-    const duration = 500;
+    const duration = 450;
 
     const animate = (timestamp: number) => {
       if (!start) start = timestamp;
@@ -71,7 +70,7 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
     requestAnimationFrame(animate);
   }, [isFlipping, currentPageIndex]);
 
-  // 키보드 조작 (Left / Right Arrow)
+  // 키보드 방향키 조작
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight' || e.key === 'PageDown') {
@@ -105,19 +104,19 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
           position: 'relative',
           width: '100%',
           aspectRatio: '4 / 5',
-          backgroundColor: '#FCFAF2',
+          backgroundColor: '#1A1614',
           borderRadius: '4px 12px 12px 4px',
           boxShadow: `
-            0 25px 50px rgba(0, 0, 0, 0.55),
+            0 25px 50px rgba(0, 0, 0, 0.65),
             0 10px 20px rgba(0, 0, 0, 0.4),
-            inset 0 0 100px rgba(0, 0, 0, 0.05)
+            inset 0 0 100px rgba(0, 0, 0, 0.1)
           `,
           perspective: '1500px',
           overflow: 'hidden',
           userSelect: 'none',
         }}
       >
-        {/* 현재 베이스 페이지 (Static Base Page) */}
+        {/* 현재 베이스 페이지 */}
         <PageGraphic
           page={currPageObj}
           issue={issue}
@@ -138,9 +137,9 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
               transform: flipDirection === 'next'
                 ? `rotateY(${-flipProgress * 180}deg)`
                 : `rotateY(${(1 - flipProgress) * 180}deg)`,
-              boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
               zIndex: 10,
-              backgroundColor: '#FCFAF2',
+              backgroundColor: '#1A1614',
               backfaceVisibility: 'hidden',
               transition: 'none',
             }}
@@ -160,9 +159,9 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
                 right: 0,
                 bottom: 0,
                 background: `linear-gradient(90deg, 
-                  rgba(0,0,0,${Math.sin(flipProgress * Math.PI) * 0.4}) 0%, 
-                  rgba(255,255,255,${Math.sin(flipProgress * Math.PI) * 0.2}) 50%, 
-                  rgba(0,0,0,${Math.sin(flipProgress * Math.PI) * 0.3}) 100%)`,
+                  rgba(0,0,0,${Math.sin(flipProgress * Math.PI) * 0.45}) 0%, 
+                  rgba(255,255,255,${Math.sin(flipProgress * Math.PI) * 0.15}) 50%, 
+                  rgba(0,0,0,${Math.sin(flipProgress * Math.PI) * 0.35}) 100%)`,
                 pointerEvents: 'none',
               }}
             />
@@ -177,20 +176,20 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
             left: 0,
             width: '16px',
             height: '100%',
-            background: 'linear-gradient(90deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0) 100%)',
+            background: 'linear-gradient(90deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0) 100%)',
             pointerEvents: 'none',
             zIndex: 5,
           }}
         />
 
-        {/* 우측/좌측 종이 넘기기 터치 Hotspot (Interactive Edge Curl Trigger) */}
+        {/* 좌우 종이 넘기기 터치 핫스팟 */}
         <div
           onClick={handlePrevPage}
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
-            width: '20%',
+            width: '25%',
             height: '100%',
             cursor: currentPageIndex > 0 ? 'pointer' : 'default',
             zIndex: 6,
@@ -203,7 +202,7 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
             position: 'absolute',
             top: 0,
             right: 0,
-            width: '20%',
+            width: '25%',
             height: '100%',
             cursor: currentPageIndex < totalPages - 1 ? 'pointer' : 'default',
             zIndex: 6,
@@ -212,7 +211,7 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
         />
       </div>
 
-      {/* 매거진 조작 하단 대시보드 (Controls Bar) */}
+      {/* 매거진 조작 하단 대시보드 */}
       <div
         style={{
           display: 'flex',
@@ -229,7 +228,6 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
           boxSizing: 'border-box',
         }}
       >
-        {/* 이전 버튼 */}
         <button
           onClick={handlePrevPage}
           disabled={currentPageIndex === 0 || isFlipping}
@@ -249,7 +247,6 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
           ◀ 이전
         </button>
 
-        {/* 페이지 번호 표시 */}
         <div style={{ textAlign: 'center' }}>
           <span
             style={{
@@ -269,11 +266,10 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
               fontFamily: "'Nanum Myeongjo', serif",
             }}
           >
-            ({currPageObj.title})
+            (클릭 시 확대 감상)
           </span>
         </div>
 
-        {/* 다음 버튼 */}
         <button
           onClick={handleNextPage}
           disabled={currentPageIndex === totalPages - 1 || isFlipping}
@@ -294,7 +290,7 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
         </button>
       </div>
 
-      {/* 페이지 세부 확대 모달 (Zoom Modal) */}
+      {/* 페이지 세부 확대 모달 */}
       {zoomPage && (
         <div
           onClick={() => setZoomPage(null)}
@@ -304,13 +300,13 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.85)',
-            backdropFilter: 'blur(8px)',
+            backgroundColor: 'rgba(0, 0, 0, 0.88)',
+            backdropFilter: 'blur(10px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 9999,
-            padding: '30px',
+            padding: '20px',
             boxSizing: 'border-box',
           }}
         >
@@ -318,12 +314,11 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
             onClick={e => e.stopPropagation()}
             style={{
               position: 'relative',
-              width: '90%',
-              maxWidth: '650px',
+              maxHeight: '90vh',
               aspectRatio: '4 / 5',
-              backgroundColor: '#FCFAF2',
+              backgroundColor: '#1A1614',
               borderRadius: '8px',
-              boxShadow: '0 30px 60px rgba(0,0,0,0.8)',
+              boxShadow: '0 30px 60px rgba(0,0,0,0.9)',
               overflow: 'hidden',
             }}
           >
@@ -334,12 +329,13 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
                 position: 'absolute',
                 top: '16px',
                 right: '16px',
-                background: 'rgba(0,0,0,0.6)',
+                background: 'rgba(0,0,0,0.7)',
                 color: '#FFF',
                 border: 'none',
                 borderRadius: '50%',
-                width: '36px',
-                height: '36px',
+                width: '40px',
+                height: '400px',
+                maxHeight: '40px',
                 fontSize: '1.2rem',
                 cursor: 'pointer',
                 display: 'flex',
@@ -357,7 +353,6 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
   );
 }
 
-// 1080 * 1350 규격 렌더링 캔버스 그래픽 컴포넌트
 interface PageGraphicProps {
   page: MagazinePage;
   issue: MagazineIssue;
@@ -365,8 +360,7 @@ interface PageGraphicProps {
 }
 
 function PageGraphic({ page, issue, onClick }: PageGraphicProps) {
-  const isCover = page.type === 'cover';
-  const isBack = page.type === 'back';
+  const [imgError, setImgError] = useState(false);
 
   return (
     <div
@@ -375,268 +369,44 @@ function PageGraphic({ page, issue, onClick }: PageGraphicProps) {
         position: 'relative',
         width: '100%',
         height: '100%',
-        backgroundColor: isCover ? issue.coverBg : isBack ? '#1C1613' : '#FBF9F4',
-        color: isCover || isBack ? '#FAF3E0' : '#2A2421',
-        padding: '40px 36px',
-        boxSizing: 'border-box',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
+        backgroundColor: '#1A1614',
         cursor: onClick ? 'zoom-in' : 'default',
         overflow: 'hidden',
       }}
     >
-      {/* 종이 아날로그 미세 질감 노이즈 필터 래퍼 */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundImage: 'radial-gradient(rgba(0,0,0,0.03) 1px, transparent 0)',
-          backgroundSize: '8px 8px',
-          pointerEvents: 'none',
-        }}
-      />
-
-      {/* 헤더 바 */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          borderBottom: isCover || isBack ? '1px solid rgba(255,255,255,0.15)' : '1px solid rgba(0,0,0,0.1)',
-          paddingBottom: '12px',
-          zIndex: 2,
-        }}
-      >
-        <span
+      {page.imageUrl && !imgError ? (
+        /* 실제 고해상도 매거진 이미지 렌더링 */
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={page.imageUrl}
+          alt={`Page ${page.pageNumber}`}
+          onError={() => setImgError(true)}
           style={{
-            fontFamily: "'Inter', sans-serif",
-            fontWeight: 900,
-            fontSize: '1rem',
-            letterSpacing: '3px',
-            color: isCover || isBack ? issue.accentColor : issue.themeColor,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            display: 'block',
+          }}
+        />
+      ) : (
+        /* 폴백 그래픽 렌더링 */
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            padding: '40px 36px',
+            boxSizing: 'border-box',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            color: '#FAF3E0',
           }}
         >
-          PROMPT
-        </span>
-        <span
-          style={{
-            fontFamily: "'Inter', sans-serif",
-            fontSize: '0.75rem',
-            opacity: 0.7,
-          }}
-        >
-          VOL. 0{issue.vol} — PAGE {page.pageNumber}
-        </span>
-      </div>
-
-      {/* 메인 콘텐츠 영역 */}
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          margin: '20px 0',
-          zIndex: 2,
-        }}
-      >
-        {isCover ? (
-          /* 커버 페이지 렌더링 */
-          <div style={{ textAlign: 'center' }}>
-            <div
-              style={{
-                fontSize: '0.8rem',
-                fontWeight: 800,
-                letterSpacing: '4px',
-                color: issue.accentColor,
-                marginBottom: '10px',
-                fontFamily: "'Inter', sans-serif",
-              }}
-            >
-              INSTAGRAM MAGAZINE ARCHIVE
-            </div>
-            <h1
-              style={{
-                fontSize: '3rem',
-                fontWeight: 900,
-                margin: '0 0 10px 0',
-                letterSpacing: '4px',
-                fontFamily: "'Inter', sans-serif",
-                lineHeight: 1.1,
-              }}
-            >
-              PROMPT
-            </h1>
-            <div
-              style={{
-                fontSize: '1.2rem',
-                fontWeight: 700,
-                color: issue.accentColor,
-                fontFamily: "'Nanum Myeongjo', serif",
-                marginBottom: '30px',
-              }}
-            >
-              {page.subtitle}
-            </div>
-
-            {/* 커버 대표 히어로 텍스처 아트 박스 */}
-            <div
-              style={{
-                width: '100%',
-                height: '200px',
-                borderRadius: '8px',
-                background: `linear-gradient(135deg, ${issue.themeColor} 0%, #111111 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 12px 24px rgba(0,0,0,0.5)',
-                margin: '0 auto',
-                border: '1px solid rgba(255,255,255,0.1)',
-              }}
-            >
-              <span
-                style={{
-                  fontSize: '4rem',
-                  fontWeight: 900,
-                  opacity: 0.15,
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                VOL.0{issue.vol}
-              </span>
-            </div>
-          </div>
-        ) : isBack ? (
-          /* 뒷표지 렌더링 */
-          <div style={{ textAlign: 'center' }}>
-            <h2 style={{ fontSize: '2rem', fontWeight: 900, fontFamily: "'Inter', sans-serif" }}>
-              {page.title}
-            </h2>
-            <p style={{ color: issue.accentColor, fontFamily: "'Nanum Myeongjo', serif" }}>
-              {page.subtitle}
-            </p>
-            {page.content?.map((text, idx) => (
-              <p key={idx} style={{ opacity: 0.6, fontSize: '0.85rem' }}>{text}</p>
-            ))}
-          </div>
-        ) : (
-          /* 일반 에디토리얼 / 기사 / 갤러리 페이지 렌더링 */
           <div>
-            <div
-              style={{
-                fontSize: '0.75rem',
-                fontWeight: 800,
-                color: issue.themeColor,
-                letterSpacing: '2px',
-                marginBottom: '6px',
-                fontFamily: "'Inter', sans-serif",
-              }}
-            >
-              {page.type.toUpperCase()}
-            </div>
-            <h2
-              style={{
-                fontSize: '1.8rem',
-                fontWeight: 900,
-                margin: '0 0 16px 0',
-                fontFamily: "'Nanum Myeongjo', serif",
-                color: '#1A1412',
-              }}
-            >
-              {page.title}
-            </h2>
-
-            {page.subtitle && (
-              <h3
-                style={{
-                  fontSize: '1.05rem',
-                  fontWeight: 700,
-                  color: '#665A54',
-                  margin: '0 0 20px 0',
-                  fontFamily: "'Nanum Myeongjo', serif",
-                }}
-              >
-                {page.subtitle}
-              </h3>
-            )}
-
-            {page.content?.map((paragraph, idx) => (
-              <p
-                key={idx}
-                style={{
-                  fontSize: '0.95rem',
-                  lineHeight: 1.75,
-                  color: '#3D3531',
-                  marginBottom: '14px',
-                  fontFamily: "'Nanum Myeongjo', serif",
-                  textAlign: 'justify',
-                }}
-              >
-                {paragraph}
-              </p>
-            ))}
-
-            {page.quote && (
-              <blockquote
-                style={{
-                  margin: '24px 0',
-                  padding: '16px 20px',
-                  borderLeft: `4px solid ${issue.themeColor}`,
-                  backgroundColor: `${issue.themeColor}12`,
-                  fontStyle: 'italic',
-                  fontSize: '1.05rem',
-                  color: '#2C221E',
-                  fontFamily: "'Nanum Myeongjo', serif",
-                }}
-              >
-                {page.quote}
-              </blockquote>
-            )}
-
-            {page.tags && (
-              <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
-                {page.tags.map((tag, idx) => (
-                  <span
-                    key={idx}
-                    style={{
-                      backgroundColor: `${issue.themeColor}22`,
-                      color: issue.themeColor,
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      padding: '4px 10px',
-                      borderRadius: '12px',
-                      fontFamily: "'Inter', sans-serif",
-                    }}
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            )}
+            <h3>Page {page.pageNumber}</h3>
           </div>
-        )}
-      </div>
-
-      {/* 푸터 영역 */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          borderTop: isCover || isBack ? '1px solid rgba(255,255,255,0.15)' : '1px solid rgba(0,0,0,0.1)',
-          paddingTop: '12px',
-          zIndex: 2,
-          fontSize: '0.75rem',
-          opacity: 0.6,
-        }}
-      >
-        <span>GONGWON ART & TECH</span>
-        <span>1080 × 1350 MAG FORMAT</span>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

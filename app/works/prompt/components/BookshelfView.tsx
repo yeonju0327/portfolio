@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { MAGAZINE_ISSUES, MagazineIssue } from '../data/magazines';
 
 interface BookshelfViewProps {
@@ -89,7 +89,6 @@ export default function BookshelfView({ onSelectIssue }: BookshelfViewProps) {
           position: 'relative',
           width: '100%',
           maxWidth: '1100px',
-          background: 'linear-[#2F1F17]',
           backgroundColor: '#2F1F17',
           border: '14px solid #4A3326',
           borderRadius: '12px',
@@ -173,7 +172,8 @@ interface BookshelfItemProps {
 }
 
 function BookshelfItem({ issue, onClick }: BookshelfItemProps) {
-  const [isHovered, setIsHovered] = React.useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   return (
     <div
@@ -206,121 +206,65 @@ function BookshelfItem({ issue, onClick }: BookshelfItemProps) {
             : '0 12px 20px rgba(0,0,0,0.6), -4px 4px 10px rgba(0,0,0,0.4)',
           borderLeft: '5px solid rgba(255,255,255,0.2)',
           transition: 'all 0.3s ease',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          padding: '16px 14px',
           boxSizing: 'border-box',
         }}
       >
-        {/* 매거진 상단 은은한 그라데이션 및 로고 */}
-        <div style={{ zIndex: 2 }}>
+        {issue.coverImage && !imgError ? (
+          /* 실제 매거진 커버 이미지 렌더링 */
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={issue.coverImage}
+            alt={issue.title}
+            onError={() => setImgError(true)}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+            }}
+          />
+        ) : (
+          /* 폴백 그래픽 렌더링 */
           <div
             style={{
+              width: '100%',
+              height: '100%',
               display: 'flex',
+              flexDirection: 'column',
               justifyContent: 'space-between',
-              alignItems: 'center',
-              borderBottom: `1px solid ${issue.accentColor}44`,
-              paddingBottom: '6px',
+              padding: '16px 14px',
+              boxSizing: 'border-box',
             }}
           >
-            <span
-              style={{
-                fontFamily: "'Inter', sans-serif",
-                fontWeight: 900,
-                fontSize: '1.2rem',
-                color: '#FFFFFF',
-                letterSpacing: '2px',
-              }}
-            >
-              PROMPT
-            </span>
-            <span
-              style={{
-                backgroundColor: issue.themeColor,
-                color: '#FFFFFF',
-                fontSize: '0.65rem',
-                fontWeight: 800,
-                padding: '2px 6px',
-                borderRadius: '3px',
-                fontFamily: "'Inter', sans-serif",
-              }}
-            >
-              VOL.{issue.vol < 10 ? `0${issue.vol}` : issue.vol}
-            </span>
+            <div style={{ zIndex: 2 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  borderBottom: `1px solid ${issue.accentColor}44`,
+                  paddingBottom: '6px',
+                }}
+              >
+                <span style={{ fontWeight: 900, fontSize: '1.2rem', color: '#FFFFFF' }}>
+                  PROMPT
+                </span>
+                <span
+                  style={{
+                    backgroundColor: issue.themeColor,
+                    color: '#FFFFFF',
+                    fontSize: '0.65rem',
+                    fontWeight: 800,
+                    padding: '2px 6px',
+                    borderRadius: '3px',
+                  }}
+                >
+                  VOL.0{issue.vol}
+                </span>
+              </div>
+            </div>
           </div>
-
-          <div
-            style={{
-              marginTop: '12px',
-              fontSize: '0.85rem',
-              fontWeight: 700,
-              color: issue.accentColor,
-              lineHeight: 1.3,
-              fontFamily: "'Nanum Myeongjo', serif",
-            }}
-          >
-            {issue.title}
-          </div>
-        </div>
-
-        {/* 매거진 썸네일 히어로 그래픽 */}
-        <div
-          style={{
-            width: '100%',
-            height: '80px',
-            borderRadius: '4px',
-            background: `radial-gradient(circle at 30% 30%, ${issue.themeColor} 0%, rgba(0,0,0,0.6) 100%)`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '10px 0',
-            boxShadow: 'inset 0 0 15px rgba(0,0,0,0.5)',
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
-          <span
-            style={{
-              fontSize: '2rem',
-              fontWeight: 900,
-              color: 'rgba(255,255,255,0.2)',
-              fontFamily: "'Inter', sans-serif",
-            }}
-          >
-            0{issue.vol}
-          </span>
-        </div>
-
-        {/* 매거진 하단 서브타이틀 및 발행 정보 */}
-        <div style={{ zIndex: 2 }}>
-          <p
-            style={{
-              margin: 0,
-              fontSize: '0.65rem',
-              color: 'rgba(255,255,255,0.7)',
-              fontFamily: "'Nanum Myeongjo', serif",
-              lineHeight: 1.2,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-            }}
-          >
-            {issue.subtitle}
-          </p>
-          <div
-            style={{
-              marginTop: '6px',
-              fontSize: '0.55rem',
-              color: 'rgba(255,255,255,0.4)',
-              fontFamily: "'Inter', sans-serif",
-            }}
-          >
-            {issue.issueDate}
-          </div>
-        </div>
+        )}
 
         {/* 종이 표면 하이라이트 광택 (Paper Gloss Shift) */}
         <div
