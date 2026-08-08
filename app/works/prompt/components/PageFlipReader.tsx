@@ -90,8 +90,7 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
     <div
       style={{
         position: 'relative',
-        width: '100%',
-        maxWidth: '850px',
+        width: '357.75px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -105,11 +104,10 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
           width: '100%',
           aspectRatio: '4 / 5',
           backgroundColor: '#1A1614',
-          borderRadius: '4px 12px 12px 4px',
+          borderRadius: '0px',
           boxShadow: `
-            0 25px 50px rgba(0, 0, 0, 0.65),
-            0 10px 20px rgba(0, 0, 0, 0.4),
-            inset 0 0 100px rgba(0, 0, 0, 0.1)
+            0 30px 60px rgba(0, 0, 0, 0.25),
+            0 12px 24px rgba(0, 0, 0, 0.16)
           `,
           perspective: '1500px',
           overflow: 'hidden',
@@ -317,7 +315,7 @@ export default function PageFlipReader({ issue }: PageFlipReaderProps) {
               maxHeight: '90vh',
               aspectRatio: '4 / 5',
               backgroundColor: '#1A1614',
-              borderRadius: '8px',
+              borderRadius: '0px',
               boxShadow: '0 30px 60px rgba(0,0,0,0.9)',
               overflow: 'hidden',
             }}

@@ -17,24 +17,24 @@ export default function TableView({ issue, onBackToBookshelf }: TableViewProps) 
         width: '100%',
         minHeight: '100vh',
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '60px 20px 40px 20px',
+        padding: '40px 20px',
         boxSizing: 'border-box',
-        background: 'radial-gradient(ellipse at 50% 30%, #E3E2DC 0%, #D4D2CB 60%, #C5C3BB 100%)',
+        background: 'radial-gradient(ellipse at 50% 40%, #EFEFEA 0%, #E4E3DD 60%, #D8D7D1 100%)',
         overflow: 'hidden',
       }}
     >
-      {/* 스튜디오 상판 은은한 조명 */}
+      {/* 테이블 은은한 스튜디오 모노톤 조명 */}
       <div
         style={{
           position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'radial-gradient(ellipse at 50% 20%, rgba(255, 255, 255, 0.45) 0%, rgba(227, 226, 220, 0) 70%)',
+          top: '15%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '75%',
+          height: '450px',
+          background: 'radial-gradient(ellipse at center, rgba(255, 255, 255, 0.45) 0%, rgba(228, 227, 221, 0) 70%)',
           pointerEvents: 'none',
           zIndex: 1,
         }}
@@ -73,10 +73,37 @@ export default function TableView({ issue, onBackToBookshelf }: TableViewProps) 
         ← 매거진 목록으로
       </button>
 
-      {/* 매거진 e-book 뷰어 컴포넌트 */}
-      <div style={{ zIndex: 3, width: '100%', display: 'flex', justifyContent: 'center' }}>
+      {/* 매거진 e-book 뷰어 컨테이너 (ArchTableView 560px 높이 뷰 영역과 1:1 수직/수평 위치 정렬) */}
+      <div
+        style={{
+          position: 'relative',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          width: '100%',
+          maxWidth: '1300px',
+          height: '560px',
+          zIndex: 3,
+        }}
+      >
         <PageFlipReader issue={issue} />
       </div>
+
+      {/* 테이블 하단 소프트 섀도우 */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '8%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '80%',
+          maxWidth: '1000px',
+          height: '50px',
+          background: 'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0) 75%)',
+          pointerEvents: 'none',
+          zIndex: 1,
+        }}
+      />
     </div>
   );
 }
