@@ -40,28 +40,23 @@ export default function ArchTableView({
     isAnimatingRef.current = true;
     setSelectedCardId(lastSelectedIssueId);
 
-    // 초기 위치 설정 (이탈되었던 위치에서 출발)
+    // 초기 위치 설정 (이탈되었던 위치에서 출발 및 아치 고유 zIndex 사전 설정)
     cardsRef.current.forEach((cardEl, idx) => {
       if (!cardEl) return;
-      const { baseRotate, baseY } = getArchParams(idx);
+      const { baseRotate, baseY, zIndex } = getArchParams(idx);
       if (idx < lastIdx) {
-        gsap.set(cardEl, { x: '-100vw', y: baseY + 40, rotation: baseRotate - 15, opacity: 0 });
+        gsap.set(cardEl, { x: '-100vw', y: baseY + 40, rotation: baseRotate - 15, opacity: 0, zIndex });
       } else if (idx > lastIdx) {
-        gsap.set(cardEl, { x: '100vw', y: baseY + 40, rotation: baseRotate + 15, opacity: 0 });
+        gsap.set(cardEl, { x: '100vw', y: baseY + 40, rotation: baseRotate + 15, opacity: 0, zIndex });
       } else {
         const targetX = (2 - lastIdx) * 221;
-        gsap.set(cardEl, { x: targetX, y: 0, scale: 2.15, rotation: 0, opacity: 1, zIndex: 100 });
+        gsap.set(cardEl, { x: targetX, y: 0, scale: 2.15, rotation: 0, opacity: 1, zIndex });
       }
     });
 
     // 복원 타임라인 실행
     const tl = gsap.timeline({
       onComplete: () => {
-        cardsRef.current.forEach((cardEl, idx) => {
-          if (!cardEl) return;
-          const { zIndex } = getArchParams(idx);
-          gsap.set(cardEl, { zIndex });
-        });
         setSelectedCardId(null);
         isAnimatingRef.current = false;
       },
