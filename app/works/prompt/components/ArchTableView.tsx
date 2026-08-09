@@ -241,22 +241,6 @@ export default function ArchTableView({
           );
         })}
       </div>
-
-      {/* 테이블 하단 소프트 섀도우 */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '8%',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '80%',
-          maxWidth: '1000px',
-          height: '50px',
-          background: 'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0) 75%)',
-          pointerEvents: 'none',
-          zIndex: 1,
-        }}
-      />
     </div>
   );
 }
@@ -272,6 +256,7 @@ function ArchMagazineCardInner({ issue, isSelected = false, onClick }: ArchMagaz
   const [imgError, setImgError] = useState(false);
 
   const showHover = isHovered && !isSelected;
+  const showDeepShadow = isHovered || isSelected;
 
   return (
     <div
@@ -295,7 +280,9 @@ function ArchMagazineCardInner({ issue, isSelected = false, onClick }: ArchMagaz
           backgroundColor: issue.coverBg || '#FFFFFF',
           borderRadius: '0px',
           overflow: 'hidden',
-          boxShadow: isHovered
+          boxShadow: isSelected
+            ? '0 14px 28px rgba(0, 0, 0, 0.25), 0 5.6px 11.2px rgba(0, 0, 0, 0.16)'
+            : isHovered
             ? '0 30px 60px rgba(0, 0, 0, 0.25), 0 12px 24px rgba(0, 0, 0, 0.16)'
             : '0 16px 36px rgba(0, 0, 0, 0.16), 0 6px 12px rgba(0, 0, 0, 0.1)',
           boxSizing: 'border-box',

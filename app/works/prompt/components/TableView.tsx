@@ -88,22 +88,6 @@ export default function TableView({ issue, onBackToBookshelf }: TableViewProps) 
       >
         <PageFlipReader issue={issue} />
       </div>
-
-      {/* 테이블 하단 소프트 섀도우 */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '8%',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '80%',
-          maxWidth: '1000px',
-          height: '50px',
-          background: 'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0) 75%)',
-          pointerEvents: 'none',
-          zIndex: 1,
-        }}
-      />
     </div>
   );
 }
